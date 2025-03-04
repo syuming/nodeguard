@@ -17,3 +17,5 @@ os.chdir(os.path.dirname(os.path.abspath(__file__)))
 dir_now = os.getcwd()
 print("變更後目錄：", dir_now)
 
+
+print("測試目錄")
