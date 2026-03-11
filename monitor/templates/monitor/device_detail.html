@@ -1,0 +1,103 @@
+{% extends "monitor/base.html" %}
+{% block title %}{{ device.name }} - NetMonitor{% endblock %}
+
+{% block content %}
+<div class="d-flex align-items-center mb-4 gap-3">
+  <a href="/" class="btn btn-sm btn-outline-secondary"><i class="bi bi-arrow-left"></i></a>
+  <h4 class="mb-0"><i class="bi bi-hdd-network me-2"></i>{{ device.name }}</h4>
+  <span class="badge badge-{{ device.status }} text-white ms-2">{{ device.get_status_display }}</span>
+</div>
+
+<div class="row g-3 mb-4">
+  <!-- 設備資訊 -->
+  <div class="col-md-4">
+    <div class="card h-100">
+      <div class="card-header"><i class="bi bi-info-circle me-1"></i>設備資訊</div>
+      <div class="card-body">
+        <table class="table table-sm">
+          <tr><th style="width:40%;color:#64748b">IP</th><td><code>{{ device.ip_address }}</code></td></tr>
+          <tr><th style="color:#64748b">類型</th><td>{{ device.get_device_type_display }}</td></tr>
+          <tr><th style="color:#64748b">SSH Port</th><td>{{ device.ssh_port }}</td></tr>
+          <tr><th style="color:#64748b">帳號</th><td>{{ device.ssh_username|default:"-" }}</td></tr>
+          <tr><th style="color:#64748b">最後檢查</th><td style="font-size:.85rem">
+            {% if device.last_checked %}{{ device.last_checked|date:"Y-m-d H:i:s" }}{% else %}-{% endif %}
+          </td></tr>
+          {% if device.description %}
+          <tr><th style="color:#64748b">描述</th><td>{{ device.description }}</td></tr>
+          {% endif %}
+        </table>
+        <div class="d-flex gap-2 mt-2">
+          <button class="btn btn-sm btn-primary" onclick="checkDevice({{ device.id }})">
+            <i class="bi bi-arrow-repeat me-1"></i>立即檢查
+          </button>
+          <a href="/device/{{ device.id }}/edit/" class="btn btn-sm btn-outline-warning">
+            <i class="bi bi-pencil me-1"></i>編輯
+          </a>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 即時 Log -->
+  <div class="col-md-8">
+    <div class="card h-100">
+      <div class="card-header d-flex justify-content-between align-items-center">
+        <span><i class="bi bi-terminal me-1"></i>設備 Log</span>
+        <button class="btn btn-sm btn-outline-secondary" onclick="refreshLogs()">
+          <i class="bi bi-arrow-clockwise"></i>
+        </button>
+      </div>
+      <div class="card-body p-2">
+        <div class="log-box" id="log-box">
+          {% for log in logs %}
+          <div class="log-{{ log.level }}">
+            <span style="color:#475569">[{{ log.created_at|date:"Y-m-d H:i:s" }}]</span>
+            <span class="badge bg-secondary me-1" style="font-size:.7rem">{{ log.level }}</span>
+            {{ log.message }}
+            {% if log.raw_output %}
+            <pre style="color:#64748b;margin:4px 0 4px 16px;font-size:.78rem;white-space:pre-wrap">{{ log.raw_output }}</pre>
+            {% endif %}
+          </div>
+          {% empty %}
+          <div class="text-muted">尚無 Log，請先執行檢查</div>
+          {% endfor %}
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function getCookie(name) {
+  const v = document.cookie.match('(^|;) ?' + name + '=([^;]*)(;|$)');
+  return v ? v[2] : null;
+}
+
+function checkDevice(id) {
+  fetch(`/api/device/${id}/check/`, { method: "POST", headers: { "X-CSRFToken": getCookie("csrftoken") } })
+    .then(() => setTimeout(refreshLogs, 5000));
+}
+
+function refreshLogs() {
+  fetch("/api/device/{{ device.id }}/logs/")
+    .then(r => r.json())
+    .then(data => {
+      const box = document.getElementById("log-box");
+      if (!data.logs.length) return;
+      box.innerHTML = data.logs.map(l => `
+        <div class="log-${l.level}">
+          <span style="color:#475569">[${l.created_at}]</span>
+          <span class="badge bg-secondary me-1" style="font-size:.7rem">${l.level}</span>
+          ${l.message}
+          ${l.raw_output ? `<pre style="color:#64748b;margin:4px 0 4px 16px;font-size:.78rem;white-space:pre-wrap">${l.raw_output}</pre>` : ""}
+        </div>`).join("");
+      box.scrollTop = box.scrollHeight;
+    });
+}
+
+// Auto-refresh logs every 15 seconds
+setInterval(refreshLogs, 15000);
+</script>
+{% endblock %}
