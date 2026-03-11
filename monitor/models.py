@@ -1,4 +1,43 @@
 from django.db import models
+from django.contrib.auth.models import User
+
+
+class Company(models.Model):
+    name = models.CharField(max_length=100, unique=True, verbose_name="公司名稱")
+    description = models.TextField(blank=True, verbose_name="描述")
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        verbose_name = "公司"
+        verbose_name_plural = "公司列表"
+
+    def __str__(self):
+        return self.name
+
+
+class UserProfile(models.Model):
+    ROLE_CHOICES = [
+        ("admin", "系統管理者"),
+        ("company_manager", "公司管理者"),
+    ]
+
+    user = models.OneToOneField(User, on_delete=models.CASCADE, related_name="profile")
+    role = models.CharField(max_length=30, choices=ROLE_CHOICES, default="company_manager", verbose_name="角色")
+    company = models.ForeignKey(
+        Company, on_delete=models.SET_NULL, null=True, blank=True,
+        related_name="members", verbose_name="所屬公司"
+    )
+
+    class Meta:
+        verbose_name = "使用者設定"
+        verbose_name_plural = "使用者設定列表"
+
+    def __str__(self):
+        return f"{self.user.username} ({self.get_role_display()})"
+
+    @property
+    def is_admin(self):
+        return self.role == "admin"
 
 
 class Device(models.Model):
@@ -17,6 +56,10 @@ class Device(models.Model):
         ("unknown", "Unknown"),
     ]
 
+    company = models.ForeignKey(
+        Company, on_delete=models.CASCADE, related_name="devices",
+        verbose_name="所屬公司", null=True, blank=True
+    )
     name = models.CharField(max_length=100, verbose_name="設備名稱")
     ip_address = models.GenericIPAddressField(verbose_name="IP 位址")
     device_type = models.CharField(

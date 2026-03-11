@@ -57,7 +57,16 @@
       </ul>
       <ul class="navbar-nav">
         {% if user.is_authenticated %}
-        <li class="nav-item"><span class="nav-link"><i class="bi bi-person-circle me-1"></i>{{ user.username }}</span></li>
+        <li class="nav-item">
+          <span class="nav-link">
+            {% if user.profile.role == "admin" %}
+              <span class="badge me-1" style="background:#7c3aed"><i class="bi bi-shield-fill-check"></i> 系統管理者</span>
+            {% elif user.profile.company %}
+              <span class="badge me-1" style="background:#0369a1"><i class="bi bi-building"></i> {{ user.profile.company.name }}</span>
+            {% endif %}
+            <i class="bi bi-person-circle me-1"></i>{{ user.username }}
+          </span>
+        </li>
         <li class="nav-item"><a class="nav-link" href="/logout/"><i class="bi bi-box-arrow-right me-1"></i>登出</a></li>
         {% endif %}
       </ul>
