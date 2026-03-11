@@ -2,33 +2,72 @@
 {% block title %}Dashboard - NetMonitor{% endblock %}
 
 {% block content %}
+<!-- 角色 Badge -->
+<div class="mb-3">
+  {% if profile.is_admin %}
+  <span class="badge" style="background:#7c3aed;font-size:.85rem"><i class="bi bi-shield-fill-check me-1"></i>系統管理者</span>
+  {% else %}
+  <span class="badge" style="background:#0369a1;font-size:.85rem"><i class="bi bi-building me-1"></i>公司管理者 - {{ profile.company.name }}</span>
+  {% endif %}
+</div>
+
 <!-- 統計卡片 -->
 <div class="row g-3 mb-4">
   <div class="col-6 col-md-3">
     <div class="card stat-card text-center p-3">
-      <div style="font-size:2rem; color:#38bdf8">{{ total }}</div>
+      <div style="font-size:2rem;color:#38bdf8">{{ total }}</div>
       <div class="text-muted">設備總數</div>
     </div>
   </div>
   <div class="col-6 col-md-3">
     <div class="card stat-card text-center p-3">
-      <div style="font-size:2rem; color:#22c55e">{{ online }}</div>
+      <div style="font-size:2rem;color:#22c55e">{{ online }}</div>
       <div class="text-muted">正常</div>
     </div>
   </div>
   <div class="col-6 col-md-3">
     <div class="card stat-card text-center p-3">
-      <div style="font-size:2rem; color:#f59e0b">{{ warning }}</div>
+      <div style="font-size:2rem;color:#f59e0b">{{ warning }}</div>
       <div class="text-muted">警告</div>
     </div>
   </div>
   <div class="col-6 col-md-3">
     <div class="card stat-card text-center p-3">
-      <div style="font-size:2rem; color:#ef4444">{{ offline }}</div>
+      <div style="font-size:2rem;color:#ef4444">{{ offline }}</div>
       <div class="text-muted">離線</div>
     </div>
   </div>
 </div>
+
+<!-- 系統管理者：各公司彙總 -->
+{% if profile.is_admin and company_stats %}
+<div class="card mb-4">
+  <div class="card-header"><i class="bi bi-building me-1"></i>各公司狀態彙總</div>
+  <div class="card-body p-0">
+    <div class="table-responsive">
+      <table class="table table-hover mb-0">
+        <thead><tr>
+          <th>公司</th><th>設備數</th>
+          <th><span class="badge badge-online text-white">Online</span></th>
+          <th><span class="badge badge-warning text-white">Warning</span></th>
+          <th><span class="badge badge-offline text-white">Offline</span></th>
+        </tr></thead>
+        <tbody>
+          {% for cs in company_stats %}
+          <tr>
+            <td><i class="bi bi-building me-1" style="color:#64748b"></i>{{ cs.company.name }}</td>
+            <td>{{ cs.total }}</td>
+            <td style="color:#22c55e">{{ cs.online }}</td>
+            <td style="color:#f59e0b">{{ cs.warning }}</td>
+            <td style="color:#ef4444">{{ cs.offline }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+{% endif %}
 
 <!-- 工具列 -->
 <div class="d-flex justify-content-between align-items-center mb-3">
@@ -53,6 +92,7 @@
             <th>狀態</th>
             <th>設備名稱</th>
             <th>IP 位址</th>
+            <th>所屬公司</th>
             <th>類型</th>
             <th>最後檢查</th>
             <th>操作</th>
@@ -67,6 +107,11 @@
             </td>
             <td><a href="/device/{{ device.id }}/" class="text-decoration-none" style="color:#38bdf8">{{ device.name }}</a></td>
             <td><code style="color:#94a3b8">{{ device.ip_address }}</code></td>
+            <td>
+              <span style="color:#64748b;font-size:.85rem">
+                <i class="bi bi-building me-1"></i>{{ device.company.name }}
+              </span>
+            </td>
             <td><span class="badge bg-secondary">{{ device.get_device_type_display }}</span></td>
             <td class="text-muted" style="font-size:.85rem">
               {% if device.last_checked %}{{ device.last_checked|date:"Y-m-d H:i:s" }}{% else %}-{% endif %}
@@ -88,7 +133,7 @@
             </td>
           </tr>
           {% empty %}
-          <tr><td colspan="6" class="text-center text-muted py-5">
+          <tr><td colspan="7" class="text-center text-muted py-5">
             <i class="bi bi-inbox display-6 d-block mb-2"></i>
             尚未新增任何設備，<a href="/device/add/">點此新增</a>
           </td></tr>
@@ -102,22 +147,16 @@
 
 {% block scripts %}
 <script>
-const STATUS_BADGE = { online:"#22c55e", offline:"#ef4444", warning:"#f59e0b", unknown:"#64748b" };
-
 function checkDevice(id) {
-  fetch(`/api/device/${id}/check/`, { method: "POST", headers: { "X-CSRFToken": getCookie("csrftoken") } });
+  fetch(`/api/device/${id}/check/`, { method:"POST", headers:{"X-CSRFToken":getCookie("csrftoken")} });
 }
-
 function checkAll() {
-  fetch("/api/check-all/", { method: "POST", headers: { "X-CSRFToken": getCookie("csrftoken") } });
+  fetch("/api/check-all/", { method:"POST", headers:{"X-CSRFToken":getCookie("csrftoken")} });
 }
-
 function getCookie(name) {
   const v = document.cookie.match('(^|;) ?' + name + '=([^;]*)(;|$)');
   return v ? v[2] : null;
 }
-
-// Poll status every 10 seconds
 function pollStatus() {
   fetch("/api/status/")
     .then(r => r.json())
@@ -125,13 +164,13 @@ function pollStatus() {
       data.devices.forEach(d => {
         const row = document.getElementById("row-" + d.id);
         if (!row) return;
-        const dot = row.querySelector(".status-dot");
+        const dot   = row.querySelector(".status-dot");
         const badge = row.querySelector(".badge");
-        const ts = row.querySelectorAll("td")[4];
-        if (dot) { dot.className = "status-dot dot-" + d.status; }
+        const ts    = row.querySelectorAll("td")[5];
+        if (dot)   dot.className = "status-dot dot-" + d.status;
         if (badge) {
           badge.className = "badge text-white badge-" + d.status;
-          badge.textContent = { online:"Online", offline:"Offline", warning:"Warning", unknown:"Unknown" }[d.status] || d.status;
+          badge.textContent = {online:"Online",offline:"Offline",warning:"Warning",unknown:"Unknown"}[d.status] || d.status;
         }
         if (ts && d.last_checked) ts.textContent = d.last_checked.replace("T"," ").slice(0,19);
       });
