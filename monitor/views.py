@@ -37,8 +37,15 @@ def _monitor_loop():
 # ── Helpers ──────────────────────────────────────────────────────────────────
 
 def get_profile(user):
-    """Return UserProfile, creating a default one if missing."""
-    profile, _ = UserProfile.objects.get_or_create(user=user, defaults={"role": "company_manager"})
+    """Return UserProfile, creating a default one if missing.
+    Django superuser 自動對應到 admin 角色。
+    """
+    default_role = "admin" if user.is_superuser else "company_manager"
+    profile, _ = UserProfile.objects.get_or_create(user=user, defaults={"role": default_role})
+    # 若已存在但 superuser 尚未設為 admin，自動修正
+    if user.is_superuser and not profile.is_admin:
+        profile.role = "admin"
+        profile.save(update_fields=["role"])
     return profile
 
 
