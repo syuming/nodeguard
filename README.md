@@ -49,6 +49,28 @@ curl -fsSL -H "Authorization: token $GH_TOKEN" \
 
 ---
 
+## 🔄 更新
+
+安裝完成後，日後更新只需在伺服器執行：
+
+```bash
+sudo bash /opt/netmonitor/update.sh
+```
+
+更新腳本會自動：拉取最新程式碼 → 安裝新套件 → 執行 Migration → 重新啟動服務。
+
+---
+
+## 🗑️ 移除
+
+完全移除並刪除所有資料：
+
+```bash
+sudo bash /opt/netmonitor/uninstall.sh
+```
+
+---
+
 ## 安裝步驟
 
 ### 1. 取得程式碼
