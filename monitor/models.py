@@ -68,7 +68,12 @@ class Device(models.Model):
     ssh_username = models.CharField(max_length=100, blank=True, verbose_name="SSH 帳號")
     ssh_password = models.CharField(max_length=100, blank=True, verbose_name="SSH 密碼")
     ssh_port = models.IntegerField(default=22, verbose_name="SSH Port")
-    description = models.TextField(blank=True, verbose_name="描述")
+    customer_name    = models.CharField(max_length=100, blank=True, verbose_name="客戶名稱")
+    customer_id      = models.CharField(max_length=50, blank=True, verbose_name="客戶編號")
+    circuit_number   = models.CharField(max_length=100, blank=True, verbose_name="電路編號")
+    customer_address = models.TextField(blank=True, verbose_name="客戶地址")
+    monitor_interval = models.IntegerField(default=60, verbose_name="監控間隔（秒）")
+    description      = models.TextField(blank=True, verbose_name="描述")
     status = models.CharField(
         max_length=20, choices=STATUS_CHOICES, default="unknown", verbose_name="狀態"
     )
@@ -104,3 +109,30 @@ class DeviceLog(models.Model):
 
     def __str__(self):
         return f"[{self.level}] {self.device.name} - {self.created_at}"
+
+
+class DowntimeRecord(models.Model):
+    device       = models.ForeignKey(Device, on_delete=models.CASCADE, related_name="downtimes")
+    started_at   = models.DateTimeField(verbose_name="斷線時間")
+    recovered_at = models.DateTimeField(null=True, blank=True, verbose_name="恢復時間")
+    duration_seconds = models.IntegerField(null=True, blank=True, verbose_name="持續秒數")
+
+    class Meta:
+        verbose_name = "斷線記錄"
+        verbose_name_plural = "斷線記錄列表"
+        ordering = ["-started_at"]
+
+    def __str__(self):
+        return f"{self.device.name} 斷線 {self.started_at}"
+
+    @property
+    def duration_display(self):
+        if self.duration_seconds is None:
+            return "尚未恢復"
+        h, r = divmod(self.duration_seconds, 3600)
+        m, s = divmod(r, 60)
+        if h:
+            return f"{h}h {m}m {s}s"
+        if m:
+            return f"{m}m {s}s"
+        return f"{s}s"

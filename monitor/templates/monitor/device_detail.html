@@ -7,64 +7,109 @@
   <h4 class="mb-0"><i class="bi bi-hdd-network me-2"></i>{{ device.name }}</h4>
   <span class="badge badge-{{ device.status }} text-white ms-2">{{ device.get_status_display }}</span>
   <span class="badge ms-1" style="background:#1e3a5f;font-size:.8rem"><i class="bi bi-building me-1"></i>{{ device.company.name }}</span>
+  <div class="ms-auto d-flex gap-2">
+    <button class="btn btn-sm btn-primary" onclick="checkDevice({{ device.id }})">
+      <i class="bi bi-arrow-repeat me-1"></i>立即檢查
+    </button>
+    <a href="/device/{{ device.id }}/edit/" class="btn btn-sm btn-outline-warning">
+      <i class="bi bi-pencil me-1"></i>編輯設備
+    </a>
+  </div>
 </div>
 
-<div class="row g-3 mb-4">
-  <!-- 設備資訊 -->
-  <div class="col-md-4">
-    <div class="card h-100">
-      <div class="card-header"><i class="bi bi-info-circle me-1"></i>設備資訊</div>
-      <div class="card-body">
-        <table class="table table-sm">
-          <tr><th style="width:40%;color:#64748b">公司</th><td><i class="bi bi-building me-1" style="color:#64748b"></i>{{ device.company.name }}</td></tr>
-          <tr><th style="color:#64748b">IP</th><td><code>{{ device.ip_address }}</code></td></tr>
-          <tr><th style="color:#64748b">類型</th><td>{{ device.get_device_type_display }}</td></tr>
+<!-- 設備資訊 -->
+<div class="card mb-4">
+  <div class="card-header"><i class="bi bi-info-circle me-1"></i>設備資訊</div>
+  <div class="card-body">
+    <div class="row g-3">
+      <div class="col-md-6">
+        <table class="table table-sm mb-0">
+          <tr><th style="width:38%;color:#64748b">客戶名稱</th><td>{{ device.customer_name|default:"-" }}</td></tr>
+          <tr><th style="color:#64748b">客戶編號</th><td>{{ device.customer_id|default:"-" }}</td></tr>
+          <tr><th style="color:#64748b">電路編號</th><td>{{ device.circuit_number|default:"-" }}</td></tr>
+          <tr><th style="color:#64748b">客戶地址</th><td style="white-space:pre-line">{{ device.customer_address|default:"-" }}</td></tr>
+        </table>
+      </div>
+      <div class="col-md-6">
+        <table class="table table-sm mb-0">
+          <tr><th style="width:38%;color:#64748b">監控 IP</th><td><code>{{ device.ip_address }}</code></td></tr>
+          <tr><th style="color:#64748b">監控間隔</th><td>{{ device.monitor_interval }} 秒</td></tr>
+          <tr><th style="color:#64748b">設備類型</th><td>{{ device.get_device_type_display }}</td></tr>
           <tr><th style="color:#64748b">SSH Port</th><td>{{ device.ssh_port }}</td></tr>
-          <tr><th style="color:#64748b">帳號</th><td>{{ device.ssh_username|default:"-" }}</td></tr>
+          <tr><th style="color:#64748b">SSH 帳號</th><td>{{ device.ssh_username|default:"-" }}</td></tr>
           <tr><th style="color:#64748b">最後檢查</th><td style="font-size:.85rem">
             {% if device.last_checked %}{{ device.last_checked|date:"Y-m-d H:i:s" }}{% else %}-{% endif %}
           </td></tr>
-          {% if device.description %}
-          <tr><th style="color:#64748b">描述</th><td>{{ device.description }}</td></tr>
-          {% endif %}
         </table>
-        <div class="d-flex gap-2 mt-2">
-          <button class="btn btn-sm btn-primary" onclick="checkDevice({{ device.id }})">
-            <i class="bi bi-arrow-repeat me-1"></i>立即檢查
-          </button>
-          <a href="/device/{{ device.id }}/edit/" class="btn btn-sm btn-outline-warning">
-            <i class="bi bi-pencil me-1"></i>編輯
-          </a>
-        </div>
       </div>
     </div>
   </div>
+</div>
 
-  <!-- 即時 Log -->
-  <div class="col-md-8">
-    <div class="card h-100">
-      <div class="card-header d-flex justify-content-between align-items-center">
-        <span><i class="bi bi-terminal me-1"></i>設備 Log</span>
-        <button class="btn btn-sm btn-outline-secondary" onclick="refreshLogs()">
-          <i class="bi bi-arrow-clockwise"></i>
-        </button>
-      </div>
-      <div class="card-body p-2">
-        <div class="log-box" id="log-box">
-          {% for log in logs %}
-          <div class="log-{{ log.level }}">
-            <span style="color:#475569">[{{ log.created_at|date:"Y-m-d H:i:s" }}]</span>
-            <span class="badge bg-secondary me-1" style="font-size:.7rem">{{ log.level }}</span>
-            {{ log.message }}
-            {% if log.raw_output %}
-            <pre style="color:#64748b;margin:4px 0 4px 16px;font-size:.78rem;white-space:pre-wrap">{{ log.raw_output }}</pre>
-            {% endif %}
-          </div>
+<!-- 斷線記錄 -->
+<div class="card mb-4">
+  <div class="card-header d-flex justify-content-between align-items-center">
+    <span><i class="bi bi-exclamation-triangle me-1" style="color:#ef4444"></i>斷線記錄</span>
+    <span class="text-muted" style="font-size:.8rem">最近 50 筆</span>
+  </div>
+  <div class="card-body p-0">
+    <div class="table-responsive">
+      <table class="table table-sm table-hover mb-0">
+        <thead>
+          <tr>
+            <th>斷線時間</th>
+            <th>恢復時間</th>
+            <th>持續時間</th>
+            <th>狀態</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for dt in downtimes %}
+          <tr>
+            <td style="font-size:.85rem">{{ dt.started_at|date:"Y-m-d H:i:s" }}</td>
+            <td style="font-size:.85rem">
+              {% if dt.recovered_at %}{{ dt.recovered_at|date:"Y-m-d H:i:s" }}{% else %}<span class="text-danger">尚未恢復</span>{% endif %}
+            </td>
+            <td style="font-size:.85rem">{{ dt.duration_display }}</td>
+            <td>
+              {% if dt.recovered_at %}
+                <span class="badge" style="background:#22c55e">已恢復</span>
+              {% else %}
+                <span class="badge" style="background:#ef4444">斷線中</span>
+              {% endif %}
+            </td>
+          </tr>
           {% empty %}
-          <div class="text-muted">尚無 Log，請先執行檢查</div>
+          <tr><td colspan="4" class="text-center text-muted py-3">尚無斷線記錄</td></tr>
           {% endfor %}
-        </div>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- 監控 Log -->
+<div class="card">
+  <div class="card-header d-flex justify-content-between align-items-center">
+    <span><i class="bi bi-terminal me-1"></i>監控 Log</span>
+    <button class="btn btn-sm btn-outline-secondary" onclick="refreshLogs()">
+      <i class="bi bi-arrow-clockwise"></i> 重新整理
+    </button>
+  </div>
+  <div class="card-body p-2">
+    <div class="log-box" id="log-box">
+      {% for log in logs %}
+      <div class="log-{{ log.level }}">
+        <span style="color:#475569">[{{ log.created_at|date:"Y-m-d H:i:s" }}]</span>
+        <span class="badge bg-secondary me-1" style="font-size:.7rem">{{ log.level }}</span>
+        {{ log.message }}
+        {% if log.raw_output %}
+        <pre style="color:#64748b;margin:4px 0 4px 16px;font-size:.78rem;white-space:pre-wrap">{{ log.raw_output }}</pre>
+        {% endif %}
       </div>
+      {% empty %}
+      <div class="text-muted">尚無 Log，請先執行檢查</div>
+      {% endfor %}
     </div>
   </div>
 </div>
@@ -76,12 +121,10 @@ function getCookie(name) {
   const v = document.cookie.match('(^|;) ?' + name + '=([^;]*)(;|$)');
   return v ? v[2] : null;
 }
-
 function checkDevice(id) {
-  fetch(`/api/device/${id}/check/`, { method: "POST", headers: { "X-CSRFToken": getCookie("csrftoken") } })
+  fetch(`/api/device/${id}/check/`, { method:"POST", headers:{"X-CSRFToken":getCookie("csrftoken")} })
     .then(() => setTimeout(refreshLogs, 5000));
 }
-
 function refreshLogs() {
   fetch("/api/device/{{ device.id }}/logs/")
     .then(r => r.json())
@@ -98,8 +141,6 @@ function refreshLogs() {
       box.scrollTop = box.scrollHeight;
     });
 }
-
-// Auto-refresh logs every 15 seconds
 setInterval(refreshLogs, 15000);
 </script>
 {% endblock %}

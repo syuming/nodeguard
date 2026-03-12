@@ -1,4 +1,5 @@
 import threading
+import time
 from django.shortcuts import render, get_object_or_404, redirect
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth import authenticate, login, logout
@@ -6,9 +7,31 @@ from django.http import JsonResponse, Http404
 from django.views.decorators.http import require_POST
 from django.contrib import messages
 
-from .models import Device, DeviceLog, Company, UserProfile
+from .models import Device, DeviceLog, Company, UserProfile, DowntimeRecord
 from .forms import DeviceForm
 from .utils import check_device
+
+# ── 持續監控全域狀態 ──────────────────────────────────────────────────────────
+_monitor_thread = None
+_monitor_stop = threading.Event()
+MONITOR_INTERVAL = 60  # 每隔幾秒檢查一次（預設 60 秒）
+
+
+def _monitor_loop():
+    from django.utils import timezone as tz
+    while not _monitor_stop.is_set():
+        now = tz.now()
+        devices = list(Device.objects.all())
+        for d in devices:
+            if _monitor_stop.is_set():
+                break
+            interval = d.monitor_interval or MONITOR_INTERVAL
+            if d.last_checked is None or (now - d.last_checked).total_seconds() >= interval:
+                try:
+                    check_device(d)
+                except Exception:
+                    pass
+        _monitor_stop.wait(10)  # 每 10 秒輪詢一次，依各設備間隔決定是否檢查
 
 
 # ── Helpers ──────────────────────────────────────────────────────────────────
@@ -101,9 +124,10 @@ def device_detail(request, pk):
     if not can_access_device(request.user, device):
         raise Http404
     logs = device.logs.all()[:100]
+    downtimes = device.downtimes.all()[:50]
     profile = get_profile(request.user)
     return render(request, "monitor/device_detail.html", {
-        "device": device, "logs": logs, "profile": profile
+        "device": device, "logs": logs, "downtimes": downtimes, "profile": profile
     })
 
 
@@ -195,3 +219,24 @@ def api_device_logs(request, pk):
     for log in logs:
         log["created_at"] = log["created_at"].strftime("%Y-%m-%d %H:%M:%S")
     return JsonResponse({"logs": logs})
+
+
+@login_required
+@require_POST
+def api_monitor_toggle(request):
+    global _monitor_thread, _monitor_stop
+    if _monitor_thread and _monitor_thread.is_alive():
+        _monitor_stop.set()
+        _monitor_thread = None
+        return JsonResponse({"monitoring": False, "interval": MONITOR_INTERVAL})
+    else:
+        _monitor_stop.clear()
+        _monitor_thread = threading.Thread(target=_monitor_loop, daemon=True)
+        _monitor_thread.start()
+        return JsonResponse({"monitoring": True, "interval": MONITOR_INTERVAL})
+
+
+@login_required
+def api_monitor_status(request):
+    running = _monitor_thread is not None and _monitor_thread.is_alive()
+    return JsonResponse({"monitoring": running, "interval": MONITOR_INTERVAL})

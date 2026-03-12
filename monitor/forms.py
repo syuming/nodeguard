@@ -12,11 +12,15 @@ class DeviceForm(forms.ModelForm):
     class Meta:
         model = Device
         fields = [
-            "company", "name", "ip_address", "device_type",
+            "company",
+            "customer_name", "customer_id", "circuit_number", "customer_address",
+            "name", "ip_address", "device_type", "monitor_interval",
             "ssh_username", "ssh_password", "ssh_port", "description",
         ]
         widgets = {
-            "description": forms.Textarea(attrs={"rows": 3}),
+            "description":       forms.Textarea(attrs={"rows": 2}),
+            "customer_address":  forms.Textarea(attrs={"rows": 2}),
+            "monitor_interval":  forms.NumberInput(attrs={"min": 10}),
         }
 
     def __init__(self, *args, user_profile=None, **kwargs):
