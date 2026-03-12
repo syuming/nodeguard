@@ -43,13 +43,98 @@ python manage.py migrate
 python manage.py createsuperuser
 ```
 
-### 5. 啟動伺服器
+### 5. 收集靜態檔案
 
 ```bash
-python manage.py runserver 0.0.0.0:8000
+python manage.py collectstatic --noinput
 ```
 
-開啟瀏覽器前往 [http://localhost:8000](http://localhost:8000)
+---
+
+## 正式部署（Gunicorn + Nginx + Supervisor）
+
+開發測試用 `runserver` 即可，**正式上線請用以下方式**。
+
+### 安裝套件
+
+```bash
+pip install gunicorn --break-system-packages
+apt-get install -y nginx supervisor
+```
+
+### Supervisor 設定
+
+建立 `/etc/supervisor/conf.d/netmonitor.conf`：
+
+```ini
+[program:netmonitor]
+command=/usr/local/bin/gunicorn --workers 3 --bind unix:/run/netmonitor.sock --access-logfile /var/log/netmonitor/access.log --error-logfile /var/log/netmonitor/error.log netmonitor.wsgi:application
+directory=/home/user/test1
+user=root
+autostart=true
+autorestart=true
+redirect_stderr=true
+stopasgroup=true
+killasgroup=true
+
+[program:nginx]
+command=/usr/sbin/nginx -g "daemon off;"
+autostart=true
+autorestart=true
+redirect_stderr=true
+```
+
+### Nginx 設定
+
+建立 `/etc/nginx/sites-available/netmonitor`：
+
+```nginx
+server {
+    listen 80;
+    server_name _;
+
+    location /static/ {
+        alias /home/user/test1/staticfiles/;
+    }
+
+    location / {
+        include proxy_params;
+        proxy_pass http://unix:/run/netmonitor.sock;
+    }
+}
+```
+
+啟用設定：
+
+```bash
+ln -sf /etc/nginx/sites-available/netmonitor /etc/nginx/sites-enabled/netmonitor
+rm -f /etc/nginx/sites-enabled/default
+mkdir -p /var/log/netmonitor
+```
+
+### 啟動服務
+
+```bash
+supervisord -c /etc/supervisor/supervisord.conf
+```
+
+確認狀態：
+
+```bash
+supervisorctl status
+```
+
+### 常用管理指令
+
+```bash
+supervisorctl status          # 查看所有服務狀態
+supervisorctl restart all     # 重啟所有服務
+supervisorctl restart netmonitor  # 只重啟 Django
+supervisorctl stop all        # 停止所有服務
+tail -f /var/log/netmonitor/error.log   # 查看錯誤 log
+```
+
+開啟瀏覽器前往 `http://<伺服器IP>/`
 
 ---
 
