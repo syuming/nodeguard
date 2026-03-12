@@ -1,7 +1,11 @@
 #!/usr/bin/env bash
 # =============================================================================
 #  NetMonitor 一鍵安裝腳本（Ubuntu 20.04 / 22.04 / 24.04）
-#  用法：sudo bash install.sh
+#  用法：
+#    export GH_TOKEN="ghp_你的Token"
+#    curl -fsSL -H "Authorization: token $GH_TOKEN" \
+#      https://raw.githubusercontent.com/syuming/monitor/main/install.sh \
+#      | sudo -E bash
 # =============================================================================
 
 set -euo pipefail
@@ -15,9 +19,13 @@ success() { echo -e "${GREEN}[OK]${RESET}    $*"; }
 warn()    { echo -e "${YELLOW}[WARN]${RESET}  $*"; }
 error()   { echo -e "${RED}[ERROR]${RESET} $*"; exit 1; }
 
+# ── Token 檢查 ────────────────────────────────────────────────────────────────
+GH_TOKEN="${GH_TOKEN:-}"
+[[ -z "$GH_TOKEN" ]] && error "請先設定 GH_TOKEN：\n  export GH_TOKEN=\"ghp_你的Token\"\n  然後重新執行安裝指令"
+
 # ── 設定變數（可在這裡修改） ──────────────────────────────────────────────────
 APP_DIR="/opt/netmonitor"
-REPO_URL="https://github.com/syuming/monitor.git"
+REPO_URL="https://${GH_TOKEN}@github.com/syuming/monitor.git"
 SERVICE_NAME="netmonitor"
 APP_PORT="8000"
 ADMIN_USER="admin"

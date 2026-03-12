@@ -15,8 +15,21 @@
 
 在 Ubuntu 20.04 / 22.04 / 24.04 上，執行以下指令即可完成全自動安裝：
 
+**步驟 1：設定 GitHub Token**
+
 ```bash
-curl -fsSL https://raw.githubusercontent.com/syuming/monitor/main/install.sh | sudo bash
+export GH_TOKEN="ghp_你的Token"
+```
+
+> Token 取得位置：GitHub → Settings → Developer settings → Personal access tokens → Tokens (classic)
+> 建立時勾選 `repo` 權限即可。
+
+**步驟 2：執行一鍵安裝**
+
+```bash
+curl -fsSL -H "Authorization: token $GH_TOKEN" \
+  https://raw.githubusercontent.com/syuming/monitor/main/install.sh \
+  | sudo -E bash
 ```
 
 安裝完成後，終端機會顯示：
