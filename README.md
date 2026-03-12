@@ -13,7 +13,13 @@
 
 ## ⚡ Ubuntu 一鍵安裝
 
-在 Ubuntu 20.04 / 22.04 / 24.04 上，執行以下指令即可完成全自動安裝：
+在 Ubuntu 20.04 / 22.04 / 24.04 上，**不需要 sudo**，安裝至使用者目錄 `~/netmonitor`。
+
+**前置需求（若尚未安裝）：**
+
+```bash
+sudo apt-get install -y python3 python3-venv git curl
+```
 
 **步驟 1：設定 GitHub Token**
 
@@ -29,7 +35,7 @@ export GH_TOKEN="ghp_你的Token"
 ```bash
 curl -fsSL -H "Authorization: token $GH_TOKEN" \
   https://raw.githubusercontent.com/syuming/monitor/main/install.sh \
-  | sudo -E bash
+  | GH_TOKEN=$GH_TOKEN bash
 ```
 
 安裝完成後，終端機會顯示：
@@ -38,36 +44,45 @@ curl -fsSL -H "Authorization: token $GH_TOKEN" \
 ╔══════════════════════════════════════════════╗
 ║          安裝完成！                          ║
 ╠══════════════════════════════════════════════╣
-║  網址：  http://<伺服器IP>:8000
-║  帳號：  admin
-║  密碼：  admin1234
+║  安裝目錄：~/netmonitor
+║  網址：    http://<伺服器IP>:8000
+║  帳號：    admin
+║  密碼：    admin1234
 ║  ⚠ 請登入後立即修改預設密碼！
 ╚══════════════════════════════════════════════╝
 ```
 
-> ✅ 腳本會自動完成：安裝系統套件、下載程式碼、建立虛擬環境、初始化資料庫、建立管理員帳號、設定 systemd 開機自動啟動。
+> ✅ 腳本會自動完成：下載程式碼、建立虛擬環境、初始化資料庫、建立管理員帳號、啟動服務。
 
 ---
 
 ## 🔄 更新
 
-安裝完成後，日後更新只需在伺服器執行：
-
 ```bash
-sudo bash /opt/netmonitor/update.sh
+bash ~/netmonitor/update.sh
 ```
-
-更新腳本會自動：拉取最新程式碼 → 安裝新套件 → 執行 Migration → 重新啟動服務。
 
 ---
 
 ## 🗑️ 移除
 
-完全移除並刪除所有資料：
+完全移除並刪除所有資料（輸入 `YES` 確認）：
 
 ```bash
-sudo bash /opt/netmonitor/uninstall.sh
+bash ~/netmonitor/uninstall.sh
 ```
+
+---
+
+## ▶️ 常用指令
+
+| 動作 | 指令 |
+|------|------|
+| 啟動 | `bash ~/netmonitor/start.sh` |
+| 停止 | `bash ~/netmonitor/stop.sh` |
+| 狀態 | `bash ~/netmonitor/status.sh` |
+| 更新 | `bash ~/netmonitor/update.sh` |
+| 移除 | `bash ~/netmonitor/uninstall.sh` |
 
 ---
 
