@@ -53,7 +53,9 @@
       <ul class="navbar-nav me-auto">
         <li class="nav-item"><a class="nav-link" href="/"><i class="bi bi-speedometer2 me-1"></i>Dashboard</a></li>
         <li class="nav-item"><a class="nav-link" href="/device/add/"><i class="bi bi-plus-circle me-1"></i>新增設備</a></li>
-        <li class="nav-item"><a class="nav-link" href="/admin/"><i class="bi bi-tools me-1"></i>Admin</a></li>
+        {% if user.is_authenticated and user.profile.role == "admin" %}
+        <li class="nav-item"><a class="nav-link" href="/company/"><i class="bi bi-building me-1"></i>公司管理</a></li>
+        {% endif %}
       </ul>
       <ul class="navbar-nav">
         {% if user.is_authenticated %}

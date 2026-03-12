@@ -8,7 +8,7 @@ from django.views.decorators.http import require_POST
 from django.contrib import messages
 
 from .models import Device, DeviceLog, Company, UserProfile, DowntimeRecord
-from .forms import DeviceForm
+from .forms import DeviceForm, CompanyForm
 from .utils import check_device
 
 # ── 持續監控全域狀態 ──────────────────────────────────────────────────────────
@@ -178,6 +178,62 @@ def device_delete(request, pk):
     device.delete()
     messages.success(request, "設備已刪除")
     return redirect("/")
+
+
+# ── Company CRUD（僅系統管理者） ───────────────────────────────────────────────
+
+@login_required
+def company_list(request):
+    profile = get_profile(request.user)
+    if not profile.is_admin:
+        raise Http404
+    companies = Company.objects.order_by("name")
+    return render(request, "monitor/company_list.html", {
+        "companies": companies, "profile": profile
+    })
+
+
+@login_required
+def company_add(request):
+    profile = get_profile(request.user)
+    if not profile.is_admin:
+        raise Http404
+    form = CompanyForm(request.POST or None)
+    if form.is_valid():
+        form.save()
+        messages.success(request, "公司已新增")
+        return redirect("/company/")
+    return render(request, "monitor/company_form.html", {
+        "form": form, "title": "新增公司", "profile": profile
+    })
+
+
+@login_required
+def company_edit(request, pk):
+    profile = get_profile(request.user)
+    if not profile.is_admin:
+        raise Http404
+    company = get_object_or_404(Company, pk=pk)
+    form = CompanyForm(request.POST or None, instance=company)
+    if form.is_valid():
+        form.save()
+        messages.success(request, "公司已更新")
+        return redirect("/company/")
+    return render(request, "monitor/company_form.html", {
+        "form": form, "title": "編輯公司", "profile": profile
+    })
+
+
+@login_required
+@require_POST
+def company_delete(request, pk):
+    profile = get_profile(request.user)
+    if not profile.is_admin:
+        raise Http404
+    company = get_object_or_404(Company, pk=pk)
+    company.delete()
+    messages.success(request, "公司已刪除")
+    return redirect("/company/")
 
 
 # ── API ───────────────────────────────────────────────────────────────────────

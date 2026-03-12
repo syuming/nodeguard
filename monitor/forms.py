@@ -2,6 +2,15 @@ from django import forms
 from .models import Device, Company
 
 
+class CompanyForm(forms.ModelForm):
+    class Meta:
+        model = Company
+        fields = ["name", "description"]
+        widgets = {
+            "description": forms.Textarea(attrs={"rows": 3}),
+        }
+
+
 class DeviceForm(forms.ModelForm):
     ssh_password = forms.CharField(
         widget=forms.PasswordInput(render_value=True),

@@ -1,0 +1,39 @@
+{% extends "monitor/base.html" %}
+{% block title %}{{ title }} - NetMonitor{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+  <div class="col-md-6">
+    <div class="card">
+      <div class="card-header"><i class="bi bi-building me-2"></i>{{ title }}</div>
+      <div class="card-body">
+        <form method="post">
+          {% csrf_token %}
+          {% for field in form %}
+          <div class="mb-3">
+            <label class="form-label">{{ field.label }}</label>
+            {{ field }}
+            {% if field.errors %}
+              <div class="text-danger small mt-1">{{ field.errors|join:", " }}</div>
+            {% endif %}
+          </div>
+          {% endfor %}
+          <div class="d-flex gap-2">
+            <button type="submit" class="btn btn-primary"><i class="bi bi-check2 me-1"></i>儲存</button>
+            <a href="/company/" class="btn btn-outline-secondary">取消</a>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+
+{% block scripts %}
+<script>
+document.querySelectorAll("input, select, textarea").forEach(el => {
+  if (el.tagName === "SELECT") el.classList.add("form-select");
+  else el.classList.add("form-control");
+});
+</script>
+{% endblock %}
+{% endblock %}

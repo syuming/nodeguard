@@ -1,0 +1,58 @@
+{% extends "monitor/base.html" %}
+{% block title %}公司管理 - NetMonitor{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+  <h4 class="mb-0"><i class="bi bi-building me-2"></i>公司管理</h4>
+  <a href="/company/add/" class="btn btn-sm btn-primary">
+    <i class="bi bi-plus me-1"></i>新增公司
+  </a>
+</div>
+
+<div class="card">
+  <div class="card-body p-0">
+    <div class="table-responsive">
+      <table class="table table-hover mb-0">
+        <thead>
+          <tr>
+            <th>公司名稱</th>
+            <th>設備數</th>
+            <th>描述</th>
+            <th>操作</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for company in companies %}
+          <tr>
+            <td><i class="bi bi-building me-1" style="color:#38bdf8"></i>{{ company.name }}</td>
+            <td>
+              <span class="badge bg-secondary">{{ company.devices.count }}</span>
+            </td>
+            <td class="text-muted" style="font-size:.85rem">{{ company.description|default:"-" }}</td>
+            <td>
+              <a href="/company/{{ company.id }}/edit/" class="btn btn-sm btn-outline-warning">
+                <i class="bi bi-pencil"></i> 編輯
+              </a>
+              <form method="post" action="/company/{{ company.id }}/delete/" class="d-inline"
+                    onsubmit="return confirm('確定刪除「{{ company.name }}」？此操作將同時刪除該公司所有設備！')">
+                {% csrf_token %}
+                <button type="submit" class="btn btn-sm btn-outline-danger">
+                  <i class="bi bi-trash"></i> 刪除
+                </button>
+              </form>
+            </td>
+          </tr>
+          {% empty %}
+          <tr>
+            <td colspan="4" class="text-center text-muted py-5">
+              <i class="bi bi-building display-6 d-block mb-2"></i>
+              尚未新增任何公司，<a href="/company/add/">點此新增</a>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+{% endblock %}
