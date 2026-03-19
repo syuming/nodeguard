@@ -1,0 +1,126 @@
+{% extends "monitor/base.html" %}
+{% block title %}新增使用者 - NetMonitor{% endblock %}
+
+{% block content %}
+<div class="mb-2" style="font-size:.85rem;color:#64748b">
+  <a href="/" class="text-decoration-none" style="color:#64748b">
+    <i class="bi bi-house me-1"></i>Dashboard
+  </a>
+  <span class="mx-1">/</span>
+  <a href="/users/" class="text-decoration-none" style="color:#64748b">使用者管理</a>
+  <span class="mx-1">/</span>
+  <span style="color:#94a3b8">新增使用者</span>
+</div>
+
+<div class="row justify-content-center mt-4">
+  <div class="col-md-6">
+    <div class="card">
+      <div class="card-header">
+        <i class="bi bi-person-plus me-2"></i>新增使用者
+      </div>
+      <div class="card-body p-4">
+        <form method="post" id="user-add-form">
+          {% csrf_token %}
+
+          {% if form.non_field_errors %}
+          <div class="alert alert-danger py-2">{{ form.non_field_errors.0 }}</div>
+          {% endif %}
+
+          <div class="row g-3">
+            <div class="col-12">
+              <label class="form-label">{{ form.username.label }}</label>
+              <input type="text" name="username" value="{{ form.username.value|default:'' }}"
+                     class="form-control{% if form.username.errors %} is-invalid{% endif %}">
+              {% for e in form.username.errors %}<div class="invalid-feedback">{{ e }}</div>{% endfor %}
+            </div>
+
+            <div class="col-6">
+              <label class="form-label">{{ form.last_name.label }}</label>
+              <input type="text" name="last_name" value="{{ form.last_name.value|default:'' }}" class="form-control">
+            </div>
+            <div class="col-6">
+              <label class="form-label">{{ form.first_name.label }}</label>
+              <input type="text" name="first_name" value="{{ form.first_name.value|default:'' }}" class="form-control">
+            </div>
+
+            <div class="col-12">
+              <label class="form-label">{{ form.email.label }}</label>
+              <input type="email" name="email" value="{{ form.email.value|default:'' }}"
+                     class="form-control{% if form.email.errors %} is-invalid{% endif %}"
+                     placeholder="寄送帳號密碼時需填寫">
+              {% for e in form.email.errors %}<div class="invalid-feedback">{{ e }}</div>{% endfor %}
+            </div>
+
+            <!-- 密碼欄位 + 產生按鈕 -->
+            <div class="col-12">
+              <label class="form-label">密碼</label>
+              <div class="input-group">
+                <input type="text" id="pw-field" name="password1"
+                       class="form-control font-monospace{% if form.password1.errors %} is-invalid{% endif %}"
+                       autocomplete="new-password">
+                <button type="button" class="btn btn-outline-info" onclick="genPassword()" title="自動產生密碼">
+                  <i class="bi bi-shuffle me-1"></i>自動產生
+                </button>
+                {% for e in form.password1.errors %}<div class="invalid-feedback">{{ e }}</div>{% endfor %}
+              </div>
+            </div>
+            <div class="col-12">
+              <label class="form-label">確認密碼</label>
+              <input type="text" id="pw2-field" name="password2"
+                     class="form-control font-monospace{% if form.password2.errors %} is-invalid{% endif %}"
+                     autocomplete="new-password">
+              {% for e in form.password2.errors %}<div class="invalid-feedback">{{ e }}</div>{% endfor %}
+            </div>
+
+            <div class="col-6">
+              <label class="form-label">{{ form.role.label }}</label>
+              <select name="role" class="form-select">
+                {% for val, label in form.role.field.choices %}
+                <option value="{{ val }}" {% if form.role.value == val %}selected{% endif %}>{{ label }}</option>
+                {% endfor %}
+              </select>
+            </div>
+            <div class="col-6">
+              <label class="form-label">{{ form.company.label }}</label>
+              <select name="company" class="form-select">
+                <option value="">（無）</option>
+                {% for choice in form.company.field.queryset %}
+                <option value="{{ choice.pk }}" {% if form.company.value == choice.pk|stringformat:"s" %}selected{% endif %}>{{ choice.name }}</option>
+                {% endfor %}
+              </select>
+            </div>
+          </div>
+
+          <!-- 兩個送出按鈕 -->
+          <div class="d-flex gap-2 mt-4 flex-wrap">
+            <button type="submit" name="save_only" class="btn btn-primary">
+              <i class="bi bi-person-check me-1"></i>新增
+            </button>
+            <button type="submit" name="send_email" class="btn btn-success">
+              <i class="bi bi-envelope me-1"></i>新增並寄送帳號密碼
+            </button>
+            <a href="/users/" class="btn btn-outline-secondary">取消</a>
+          </div>
+          <div class="mt-2" style="font-size:.8rem;color:#64748b">
+            <i class="bi bi-info-circle me-1"></i>「新增並寄送」需填寫 Email，並在 .env 設定 SMTP
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function genPassword() {
+  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789!@#$%';
+  let pw = '';
+  const arr = new Uint32Array(12);
+  crypto.getRandomValues(arr);
+  arr.forEach(n => pw += chars[n % chars.length]);
+  document.getElementById('pw-field').value  = pw;
+  document.getElementById('pw2-field').value = pw;
+}
+</script>
+{% endblock %}

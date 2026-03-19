@@ -1,0 +1,140 @@
+{% extends "monitor/base.html" %}
+{% load static %}
+{% block title %}{{ company.name }} - NetMonitor{% endblock %}
+
+{% block content %}
+<div class="mb-2" style="font-size:.85rem;color:#64748b">
+  <a href="/" class="text-decoration-none" style="color:#64748b">
+    <i class="bi bi-house me-1"></i>Dashboard
+  </a>
+  <span class="mx-1">/</span>
+  <span style="color:#94a3b8">{{ company.name }}</span>
+</div>
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+  <div>
+    <h4 class="mb-0" style="color:#f1f5f9">
+      <i class="bi bi-building me-2" style="color:#38bdf8"></i>{{ company.name }}
+    </h4>
+    {% if company.description %}
+    <p class="mb-0 mt-1" style="color:#94a3b8;font-size:.9rem">{{ company.description }}</p>
+    {% endif %}
+  </div>
+  {% if profile.is_admin %}
+  <a href="/company/{{ company.id }}/edit/" class="btn btn-sm btn-outline-warning">
+    <i class="bi bi-pencil me-1"></i>編輯公司
+  </a>
+  {% endif %}
+</div>
+
+<!-- 統計 -->
+<div class="row g-3 mb-4">
+  <div class="col-6 col-md-3">
+    <div class="card stat-card text-center p-3">
+      <div style="font-size:2rem;color:#38bdf8">{{ devices|length }}</div>
+      <div class="text-muted">設備總數</div>
+    </div>
+  </div>
+  <div class="col-6 col-md-3">
+    <div class="card stat-card text-center p-3">
+      <div style="font-size:2rem;color:#22c55e">{{ online }}</div>
+      <div class="text-muted">正常</div>
+    </div>
+  </div>
+  <div class="col-6 col-md-3">
+    <div class="card stat-card text-center p-3">
+      <div style="font-size:2rem;color:#f59e0b">{{ warning }}</div>
+      <div class="text-muted">警告</div>
+    </div>
+  </div>
+  <div class="col-6 col-md-3">
+    <div class="card stat-card text-center p-3">
+      <div style="font-size:2rem;color:#ef4444">{{ offline }}</div>
+      <div class="text-muted">離線</div>
+    </div>
+  </div>
+</div>
+
+<!-- 設備列表 -->
+<div class="d-flex justify-content-between align-items-center mb-3">
+  <h5 class="mb-0"><i class="bi bi-list-ul me-2"></i>設備列表</h5>
+  {% if profile.is_admin %}
+  <a href="/device/add/?company={{ company.pk }}" class="btn btn-sm btn-primary">
+    <i class="bi bi-plus me-1"></i>新增設備
+  </a>
+  {% endif %}
+</div>
+
+<div class="card">
+  <div class="card-body p-0">
+    <div class="table-responsive">
+      <table class="table table-hover mb-0">
+        <thead>
+          <tr>
+            <th>狀態</th>
+            <th>設備名稱</th>
+            <th>IP 位址</th>
+            <th>類型</th>
+            <th>最後檢查</th>
+            <th>操作</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for device in devices %}
+          <tr class="{% if device.status == 'offline' %}row-offline{% elif device.status == 'warning' %}row-warning{% endif %}">
+            <td>
+              <span class="status-dot dot-{{ device.status }}"></span>
+              <span class="badge badge-{{ device.status }} text-white">{{ device.get_status_display }}</span>
+            </td>
+            <td>
+              <a href="/device/{{ device.id }}/" class="text-decoration-none" style="color:#38bdf8">{{ device.name }}</a>
+            </td>
+            <td><code style="color:#94a3b8">{{ device.ip_address }}</code></td>
+            <td><span class="badge bg-secondary">{{ device.get_device_type_display }}</span></td>
+            <td class="text-muted" style="font-size:.85rem">
+              {% if device.last_checked %}{{ device.last_checked|date:"Y-m-d H:i:s" }}{% else %}-{% endif %}
+            </td>
+            <td>
+              <button class="btn btn-sm btn-outline-secondary" onclick="checkDevice({{ device.id }})" title="立即檢查">
+                <i class="bi bi-arrow-repeat"></i>
+              </button>
+              {% if profile.is_admin %}
+              <a href="/device/{{ device.id }}/edit/" class="btn btn-sm btn-outline-warning" title="編輯">
+                <i class="bi bi-pencil"></i>
+              </a>
+              <form method="post" action="/device/{{ device.id }}/delete/" class="d-inline"
+                    onsubmit="return confirm('確定刪除 {{ device.name }} ?')">
+                {% csrf_token %}
+                <button type="submit" class="btn btn-sm btn-outline-danger" title="刪除">
+                  <i class="bi bi-trash"></i>
+                </button>
+              </form>
+              {% endif %}
+            </td>
+          </tr>
+          {% empty %}
+          <tr>
+            <td colspan="6" class="text-center text-muted py-5">
+              <i class="bi bi-inbox display-6 d-block mb-2"></i>
+              此公司尚未新增任何設備
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function checkDevice(id) {
+  fetch(`/api/device/${id}/check/`, { method:"POST", headers:{"X-CSRFToken":getCookie("csrftoken")} });
+}
+function getCookie(name) {
+  const v = document.cookie.match('(^|;) ?' + name + '=([^;]*)(;|$)');
+  return v ? v[2] : null;
+}
+</script>
+{% endblock %}

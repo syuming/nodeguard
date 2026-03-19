@@ -1,0 +1,222 @@
+{% extends "monitor/base.html" %}
+{% block title %}Email 設定 - NetMonitor{% endblock %}
+
+{% block content %}
+<div class="mb-2" style="font-size:.85rem;color:#64748b">
+  <a href="/" class="text-decoration-none" style="color:#64748b">
+    <i class="bi bi-house me-1"></i>Dashboard
+  </a>
+  <span class="mx-1">/</span>
+  <span style="color:#94a3b8">Email 設定</span>
+</div>
+
+<h4 class="mb-4" style="color:#f1f5f9">
+  <i class="bi bi-envelope-gear me-2" style="color:#38bdf8"></i>Email 設定
+</h4>
+
+<div class="row g-4">
+  <!-- 設定表單 -->
+  <div class="col-md-7">
+    <div class="card">
+      <div class="card-header"><i class="bi bi-sliders me-2"></i>SMTP 設定</div>
+      <div class="card-body p-4">
+        <form method="post">
+          {% csrf_token %}
+
+          <!-- 啟用開關 -->
+          <div class="mb-4 d-flex align-items-center gap-3">
+            <div class="form-check form-switch mb-0">
+              <input class="form-check-input" type="checkbox" name="enabled" id="enabled"
+                     {% if cfg.enabled %}checked{% endif %} style="width:2.5em;height:1.4em">
+              <label class="form-check-label ms-2" for="enabled" style="color:#e2e8f0;font-weight:600">
+                啟用 Email 功能
+              </label>
+            </div>
+            {% if cfg.enabled %}
+            <span class="badge" style="background:#22c55e">已啟用</span>
+            {% else %}
+            <span class="badge bg-secondary">未啟用</span>
+            {% endif %}
+          </div>
+
+          <!-- 驗證方式 -->
+          <div class="mb-3">
+            <label class="form-label">驗證方式</label>
+            <select name="method" class="form-select" id="method-select" onchange="updateMethodUI()">
+              <option value="none"  {% if cfg.method == "none"  %}selected{% endif %}>無驗證（直接轉發，適合內部 SMTP relay）</option>
+              <option value="tls"   {% if cfg.method == "tls"   %}selected{% endif %}>帳號密碼 + STARTTLS（Port 587，Gmail / Office 365）</option>
+              <option value="ssl"   {% if cfg.method == "ssl"   %}selected{% endif %}>帳號密碼 + SSL（Port 465）</option>
+              <option value="plain" {% if cfg.method == "plain" %}selected{% endif %}>帳號密碼（無加密，Port 25 / 自訂）</option>
+            </select>
+          </div>
+
+          <!-- 說明文字 -->
+          <div id="method-hint" class="alert py-2 mb-3" style="font-size:.82rem"></div>
+
+          <div class="row g-3">
+            <div class="col-8">
+              <label class="form-label">SMTP 主機</label>
+              <input type="text" name="host" class="form-control" value="{{ cfg.host }}"
+                     placeholder="smtp.gmail.com">
+            </div>
+            <div class="col-4">
+              <label class="form-label">Port</label>
+              <input type="number" name="port" class="form-control" value="{{ cfg.port }}"
+                     id="port-input">
+            </div>
+
+            <div class="col-12 auth-fields">
+              <label class="form-label">帳號</label>
+              <input type="text" name="username" class="form-control" value="{{ cfg.username }}"
+                     autocomplete="off" placeholder="your@email.com">
+            </div>
+            <div class="col-12 auth-fields">
+              <label class="form-label">密碼
+                <small style="color:#64748b">（留空表示不修改）</small>
+              </label>
+              <div class="input-group">
+                <input type="password" name="password" id="pw-input" class="form-control"
+                       autocomplete="new-password" placeholder="輸入新密碼以更新">
+                <button type="button" class="btn btn-outline-secondary"
+                        onclick="togglePw()" title="顯示/隱藏密碼">
+                  <i class="bi bi-eye" id="pw-eye"></i>
+                </button>
+              </div>
+              {% if cfg.password %}
+              <div style="font-size:.78rem;color:#64748b;margin-top:4px">
+                <i class="bi bi-check-circle text-success me-1"></i>已設定密碼（留空不更動）
+              </div>
+              {% endif %}
+            </div>
+
+            <div class="col-12">
+              <label class="form-label">寄件者 Email
+                <small style="color:#64748b">（留空則使用帳號）</small>
+              </label>
+              <input type="email" name="from_email" class="form-control"
+                     value="{{ cfg.from_email }}" placeholder="noreply@yourdomain.com">
+            </div>
+          </div>
+
+          <hr style="border-color:#334155;margin:1.5rem 0">
+          <button type="submit" name="save_config" class="btn btn-primary">
+            <i class="bi bi-check-lg me-1"></i>儲存設定
+          </button>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- 測試寄送 + 說明 -->
+  <div class="col-md-5">
+    <div class="card mb-4">
+      <div class="card-header"><i class="bi bi-send me-2"></i>測試寄送</div>
+      <div class="card-body p-4">
+        <form method="post" action="/settings/email/test/">
+          {% csrf_token %}
+          <div class="mb-3">
+            <label class="form-label">收件者 Email</label>
+            <input type="email" name="to" class="form-control" placeholder="test@example.com">
+          </div>
+          <button type="submit" class="btn btn-outline-info w-100">
+            <i class="bi bi-send me-1"></i>發送測試郵件
+          </button>
+          <div class="mt-2" style="font-size:.78rem;color:#64748b">
+            先儲存設定後再測試
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-header"><i class="bi bi-info-circle me-2"></i>各方式說明</div>
+      <div class="card-body" style="font-size:.82rem;color:#94a3b8">
+        <table class="table table-sm mb-0" style="font-size:.82rem">
+          <thead>
+            <tr>
+              <th style="color:#64748b">方式</th>
+              <th style="color:#64748b">Port</th>
+              <th style="color:#64748b">適合場景</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><span class="badge bg-secondary">無驗證</span></td>
+              <td>25</td>
+              <td>內部 mail relay、公司自建 SMTP</td>
+            </tr>
+            <tr>
+              <td><span class="badge" style="background:#0369a1">STARTTLS</span></td>
+              <td>587</td>
+              <td>Gmail、Office 365、一般雲端信箱</td>
+            </tr>
+            <tr>
+              <td><span class="badge" style="background:#7c3aed">SSL</span></td>
+              <td>465</td>
+              <td>需要強制 SSL 的信箱服務</td>
+            </tr>
+            <tr>
+              <td><span class="badge" style="background:#b45309">無加密</span></td>
+              <td>25</td>
+              <td>舊式系統、需要帳密但不加密的情境</td>
+            </tr>
+          </tbody>
+        </table>
+        <div class="mt-3" style="color:#64748b">
+          <i class="bi bi-lightbulb me-1 text-warning"></i>
+          Gmail 需使用「應用程式密碼」，而非登入密碼。
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+const METHOD_HINTS = {
+  none:  { cls: "alert-secondary", text: "不使用任何驗證，直接連線至 SMTP 主機轉發郵件。適合內部 relay 或不需要身份驗證的環境，帳號密碼欄位可留空。" },
+  tls:   { cls: "alert-info",      text: "先建立 SMTP 連線，再升級為 TLS 加密通道（STARTTLS）。Gmail 建議使用此方式（Port 587），需填寫帳號與應用程式密碼。" },
+  ssl:   { cls: "alert-info",      text: "從一開始就使用 SSL 加密連線（SMTPS）。Port 通常為 465，需填寫帳號密碼。" },
+  plain: { cls: "alert-warning",   text: "使用帳號密碼登入，但連線不加密。僅適合封閉內網環境，不建議在公開網路上使用。" },
+};
+
+const METHOD_PORTS = { none: 25, tls: 587, ssl: 465, plain: 25 };
+
+function updateMethodUI() {
+  const method = document.getElementById("method-select").value;
+  const hint   = METHOD_HINTS[method];
+  const el     = document.getElementById("method-hint");
+  el.className = `alert py-2 mb-3 ${hint.cls}`;
+  el.textContent = hint.text;
+
+  // Auto-fill port if still at a default value
+  const portInput = document.getElementById("port-input");
+  const defaults  = Object.values(METHOD_PORTS);
+  if (defaults.includes(parseInt(portInput.value))) {
+    portInput.value = METHOD_PORTS[method];
+  }
+
+  // Show/hide auth fields
+  const show = method !== "none";
+  document.querySelectorAll(".auth-fields").forEach(el => {
+    el.style.display = show ? "" : "none";
+  });
+}
+
+function togglePw() {
+  const inp = document.getElementById("pw-input");
+  const eye = document.getElementById("pw-eye");
+  if (inp.type === "password") {
+    inp.type = "text";
+    eye.className = "bi bi-eye-slash";
+  } else {
+    inp.type = "password";
+    eye.className = "bi bi-eye";
+  }
+}
+
+// Init on load
+updateMethodUI();
+</script>
+{% endblock %}

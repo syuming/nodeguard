@@ -47,19 +47,24 @@
     <div class="table-responsive">
       <table class="table table-hover mb-0">
         <thead><tr>
-          <th>公司</th><th>設備數</th>
-          <th><span class="badge badge-online text-white">Online</span></th>
-          <th><span class="badge badge-warning text-white">Warning</span></th>
-          <th><span class="badge badge-offline text-white">Offline</span></th>
+          <th>公司</th>
+          <th>設備數</th>
+          <th>正常</th>
+          <th>警告</th>
+          <th>離線</th>
         </tr></thead>
         <tbody>
           {% for cs in company_stats %}
           <tr>
-            <td><i class="bi bi-building me-1" style="color:#64748b"></i>{{ cs.company.name }}</td>
-            <td>{{ cs.total }}</td>
-            <td style="color:#22c55e">{{ cs.online }}</td>
-            <td style="color:#f59e0b">{{ cs.warning }}</td>
-            <td style="color:#ef4444">{{ cs.offline }}</td>
+            <td>
+              <a href="/company/{{ cs.company.id }}/" class="text-decoration-none" style="color:#38bdf8">
+                <i class="bi bi-building me-1"></i>{{ cs.company.name }}
+              </a>
+            </td>
+            <td><span class="badge bg-secondary">{{ cs.total }}</span></td>
+            <td><span class="badge badge-online text-white">{{ cs.online }}</span></td>
+            <td><span class="badge badge-warning text-white">{{ cs.warning }}</span></td>
+            <td><span class="badge badge-offline text-white">{{ cs.offline }}</span></td>
           </tr>
           {% endfor %}
         </tbody>
@@ -103,7 +108,7 @@
         </thead>
         <tbody id="device-table-body">
           {% for device in devices %}
-          <tr id="row-{{ device.id }}">
+          <tr id="row-{{ device.id }}" class="{% if device.status == 'offline' %}row-offline{% elif device.status == 'warning' %}row-warning{% endif %}">
             <td>
               <span class="status-dot dot-{{ device.status }}"></span>
               <span class="badge badge-{{ device.status }} text-white">{{ device.get_status_display }}</span>
@@ -111,9 +116,9 @@
             <td><a href="/device/{{ device.id }}/" class="text-decoration-none" style="color:#38bdf8">{{ device.name }}</a></td>
             <td><code style="color:#94a3b8">{{ device.ip_address }}</code></td>
             <td>
-              <span style="color:#64748b;font-size:.85rem">
+              <a href="/company/{{ device.company.id }}/" class="text-decoration-none" style="color:#64748b;font-size:.85rem">
                 <i class="bi bi-building me-1"></i>{{ device.company.name }}
-              </span>
+              </a>
             </td>
             <td><span class="badge bg-secondary">{{ device.get_device_type_display }}</span></td>
             <td class="text-muted" style="font-size:.85rem">
@@ -175,7 +180,9 @@ function pollStatus() {
           badge.className = "badge text-white badge-" + d.status;
           badge.textContent = {online:"Online",offline:"Offline",warning:"Warning",unknown:"Unknown"}[d.status] || d.status;
         }
-        if (ts && d.last_checked) ts.textContent = d.last_checked.replace("T"," ").slice(0,19);
+        row.className = d.status === "offline" ? "row-offline" : d.status === "warning" ? "row-warning" : "";
+        row.id = "row-" + d.id;
+        if (ts && d.last_checked) ts.textContent = d.last_checked;
       });
     });
 }

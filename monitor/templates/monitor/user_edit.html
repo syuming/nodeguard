@@ -1,0 +1,111 @@
+{% extends "monitor/base.html" %}
+{% block title %}編輯使用者 - NetMonitor{% endblock %}
+
+{% block content %}
+<div class="mb-2" style="font-size:.85rem;color:#64748b">
+  <a href="/" class="text-decoration-none" style="color:#64748b">
+    <i class="bi bi-house me-1"></i>Dashboard
+  </a>
+  <span class="mx-1">/</span>
+  <a href="/users/" class="text-decoration-none" style="color:#64748b">使用者管理</a>
+  <span class="mx-1">/</span>
+  <span style="color:#94a3b8">{{ target.username }}</span>
+</div>
+
+<h4 class="mb-4" style="color:#f1f5f9">
+  <i class="bi bi-person-circle me-2" style="color:#38bdf8"></i>{{ target.username }}
+  {% if target.profile.role == "admin" %}
+  <span class="badge ms-2" style="background:#7c3aed;font-size:.75rem">系統管理者</span>
+  {% else %}
+  <span class="badge ms-2" style="background:#0369a1;font-size:.75rem">公司管理者</span>
+  {% endif %}
+  {% if target.profile.company %}
+  <span class="badge ms-1 bg-secondary" style="font-size:.75rem">
+    <i class="bi bi-building me-1"></i>{{ target.profile.company.name }}
+  </span>
+  {% endif %}
+</h4>
+
+<div class="row g-4">
+  <!-- 基本資料 -->
+  <div class="col-md-5">
+    <div class="card h-100">
+      <div class="card-header"><i class="bi bi-person me-2"></i>基本資料</div>
+      <div class="card-body p-4">
+        <form method="post">
+          {% csrf_token %}
+          {% for field in info_form %}
+          <div class="mb-3">
+            <label class="form-label">{{ field.label }}</label>
+            <input type="text" name="{{ field.html_name }}"
+                   value="{{ field.value|default:'' }}"
+                   class="form-control{% if field.errors %} is-invalid{% endif %}">
+            {% for error in field.errors %}
+            <div class="invalid-feedback">{{ error }}</div>
+            {% endfor %}
+          </div>
+          {% endfor %}
+
+          <hr style="border-color:#334155">
+
+          <div class="mb-3">
+            <label class="form-label">{{ meta_form.role.label }}</label>
+            <select name="role" class="form-select">
+              {% for val, label in meta_form.role.field.choices %}
+              <option value="{{ val }}" {% if meta_form.role.value == val %}selected{% endif %}>{{ label }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="mb-3">
+            <label class="form-label">{{ meta_form.company.label }}</label>
+            <select name="company" class="form-select">
+              <option value="">（無）</option>
+              {% for c in meta_form.company.field.queryset %}
+              <option value="{{ c.pk }}" {% if meta_form.company.value == c.pk|stringformat:"s" %}selected{% endif %}>{{ c.name }}</option>
+              {% endfor %}
+            </select>
+          </div>
+
+          <button type="submit" name="save_info" class="btn btn-primary mt-2">
+            <i class="bi bi-check-lg me-1"></i>儲存資料
+          </button>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- 變更密碼 -->
+  <div class="col-md-5">
+    <div class="card h-100">
+      <div class="card-header"><i class="bi bi-key me-2"></i>變更密碼</div>
+      <div class="card-body p-4">
+        <form method="post">
+          {% csrf_token %}
+          {% for field in pw_form %}
+          <div class="mb-3">
+            <label class="form-label">{{ field.label }}</label>
+            <input type="password" name="{{ field.html_name }}"
+                   class="form-control{% if field.errors %} is-invalid{% endif %}">
+            {% for error in field.errors %}
+            <div class="invalid-feedback">{{ error }}</div>
+            {% endfor %}
+          </div>
+          {% endfor %}
+          {% if pw_form.non_field_errors %}
+          <div class="alert alert-danger py-2">{{ pw_form.non_field_errors.0 }}</div>
+          {% endif %}
+          <button type="submit" name="save_password" class="btn btn-warning mt-2">
+            <i class="bi bi-key me-1"></i>更新密碼
+          </button>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="mt-3">
+  <a href="/users/" class="btn btn-outline-secondary btn-sm">
+    <i class="bi bi-arrow-left me-1"></i>返回列表
+  </a>
+</div>
+{% endblock %}

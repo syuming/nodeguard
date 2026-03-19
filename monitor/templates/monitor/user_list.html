@@ -1,0 +1,68 @@
+{% extends "monitor/base.html" %}
+{% block title %}使用者管理 - NetMonitor{% endblock %}
+
+{% block content %}
+<div class="mb-2" style="font-size:.85rem;color:#64748b">
+  <a href="/" class="text-decoration-none" style="color:#64748b">
+    <i class="bi bi-house me-1"></i>Dashboard
+  </a>
+  <span class="mx-1">/</span>
+  <span style="color:#94a3b8">使用者管理</span>
+</div>
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+  <h4 class="mb-0" style="color:#f1f5f9">
+    <i class="bi bi-people me-2" style="color:#38bdf8"></i>使用者管理
+  </h4>
+  <a href="/users/add/" class="btn btn-sm btn-primary">
+    <i class="bi bi-person-plus me-1"></i>新增使用者
+  </a>
+</div>
+
+<div class="card">
+  <div class="card-body p-0">
+    <div class="table-responsive">
+      <table class="table table-hover mb-0">
+        <thead>
+          <tr>
+            <th>帳號</th>
+            <th>姓名</th>
+            <th>Email</th>
+            <th>角色</th>
+            <th>所屬公司</th>
+            <th>操作</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for u in users %}
+          <tr>
+            <td><i class="bi bi-person me-1" style="color:#94a3b8"></i>{{ u.username }}</td>
+            <td>{{ u.get_full_name|default:"-" }}</td>
+            <td style="color:#94a3b8;font-size:.9rem">{{ u.email|default:"-" }}</td>
+            <td>
+              {% if u.profile.role == "admin" %}
+              <span class="badge" style="background:#7c3aed">系統管理者</span>
+              {% else %}
+              <span class="badge" style="background:#0369a1">公司管理者</span>
+              {% endif %}
+            </td>
+            <td style="font-size:.9rem;color:#94a3b8">
+              {{ u.profile.company.name|default:"-" }}
+            </td>
+            <td>
+              <a href="/users/{{ u.id }}/edit/" class="btn btn-sm btn-outline-warning">
+                <i class="bi bi-pencil me-1"></i>編輯
+              </a>
+            </td>
+          </tr>
+          {% empty %}
+          <tr><td colspan="6" class="text-center text-muted py-5">
+            <i class="bi bi-people display-6 d-block mb-2"></i>目前沒有其他使用者
+          </td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+{% endblock %}

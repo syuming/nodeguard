@@ -6,7 +6,9 @@
   <a href="/" class="btn btn-sm btn-outline-secondary"><i class="bi bi-arrow-left"></i></a>
   <h4 class="mb-0"><i class="bi bi-hdd-network me-2"></i>{{ device.name }}</h4>
   <span class="badge badge-{{ device.status }} text-white ms-2">{{ device.get_status_display }}</span>
+  {% if device.company %}
   <span class="badge ms-1" style="background:#1e3a5f;font-size:.8rem"><i class="bi bi-building me-1"></i>{{ device.company.name }}</span>
+  {% endif %}
   <div class="ms-auto d-flex gap-2">
     <button class="btn btn-sm btn-primary" onclick="checkDevice({{ device.id }})">
       <i class="bi bi-arrow-repeat me-1"></i>立即檢查
@@ -33,16 +35,139 @@
       <div class="col-md-6">
         <table class="table table-sm mb-0">
           <tr><th style="width:38%;color:#64748b">監控 IP</th><td><code>{{ device.ip_address }}</code></td></tr>
-          <tr><th style="color:#64748b">監控間隔</th><td>{{ device.monitor_interval }} 秒</td></tr>
           <tr><th style="color:#64748b">設備類型</th><td>{{ device.get_device_type_display }}</td></tr>
-          <tr><th style="color:#64748b">SSH Port</th><td>{{ device.ssh_port }}</td></tr>
-          <tr><th style="color:#64748b">SSH 帳號</th><td>{{ device.ssh_username|default:"-" }}</td></tr>
           <tr><th style="color:#64748b">最後檢查</th><td style="font-size:.85rem">
-            {% if device.last_checked %}{{ device.last_checked|date:"Y-m-d H:i:s" }}{% else %}-{% endif %}
+            <span id="last-checked-time">{% if device.last_checked %}{{ device.last_checked|date:"Y-m-d H:i:s" }}{% else %}-{% endif %}</span>
           </td></tr>
+          <tr><th style="color:#64748b">描述</th><td style="font-size:.85rem">{{ device.description|default:"-" }}</td></tr>
         </table>
       </div>
     </div>
+  </div>
+</div>
+
+<!-- 監控項目 -->
+<div class="card mb-4">
+  <div class="card-header d-flex align-items-center justify-content-between">
+    <span><i class="bi bi-radar me-1"></i>監控項目</span>
+    <button class="btn btn-sm btn-outline-success" type="button"
+            data-bs-toggle="collapse" data-bs-target="#add-check-panel">
+      <i class="bi bi-plus-lg me-1"></i>新增監控
+    </button>
+  </div>
+
+  <!-- 新增監控項目表單 -->
+  <div class="collapse" id="add-check-panel">
+    <div class="card-body border-bottom" style="background:#0f1e30">
+      <form method="post" action="/device/{{ device.id }}/checks/add/" id="check-add-form">
+        {% csrf_token %}
+        <div class="row g-2 align-items-end">
+          <div class="col-sm-3 col-6">
+            <label class="form-label form-label-sm">監控類型</label>
+            <select name="check_type" class="form-select form-select-sm" id="id_check_type" onchange="toggleCheckFields()">
+              {% for val, label in check_form.check_type.field.choices %}
+              <option value="{{ val }}">{{ label }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="col-sm-2 col-6" id="field-port">
+            <label class="form-label form-label-sm">Port</label>
+            <input type="number" name="port" class="form-control form-control-sm" placeholder="22 / 80...">
+          </div>
+          <div class="col-sm-2 col-6" id="field-ssh-user" style="display:none">
+            <label class="form-label form-label-sm">SSH 帳號</label>
+            <input type="text" name="ssh_username" class="form-control form-control-sm" autocomplete="off">
+          </div>
+          <div class="col-sm-2 col-6" id="field-ssh-pw" style="display:none">
+            <label class="form-label form-label-sm">SSH 密碼</label>
+            <input type="password" name="ssh_password" class="form-control form-control-sm" autocomplete="new-password">
+          </div>
+          <div class="col-sm-4 col-12" id="field-url" style="display:none">
+            <label class="form-label form-label-sm">URL</label>
+            <input type="text" name="url" class="form-control form-control-sm" placeholder="http://...">
+          </div>
+          <div class="col-sm-2 col-6" id="field-http-code" style="display:none">
+            <label class="form-label form-label-sm">預期狀態碼</label>
+            <input type="number" name="expected_status_code" class="form-control form-control-sm" value="200">
+          </div>
+          <div class="col-sm-2 col-6">
+            <label class="form-label form-label-sm">間隔（秒）</label>
+            <input type="number" name="interval" class="form-control form-control-sm" value="3" min="1">
+          </div>
+          <input type="hidden" name="enabled" value="true">
+          <div class="col-auto">
+            <button type="submit" class="btn btn-sm btn-success">
+              <i class="bi bi-plus-lg me-1"></i>新增
+            </button>
+          </div>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- 監控項目列表 -->
+  <div class="card-body p-0">
+    {% if checks %}
+    <div class="table-responsive">
+      <table class="table table-sm table-hover mb-0">
+        <thead>
+          <tr>
+            <th>類型</th>
+            <th>設定</th>
+            <th>間隔</th>
+            <th>狀態</th>
+            <th>最後訊息</th>
+            <th>最後檢查</th>
+            <th style="width:80px"></th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for c in checks %}
+          <tr id="check-row-{{ c.pk }}">
+            <td><span class="badge bg-secondary">{{ c.get_check_type_display }}</span></td>
+            <td style="font-size:.82rem">
+              {% if c.check_type == "ping" %}-
+              {% elif c.check_type == "tcp" %}Port {{ c.port }}
+              {% elif c.check_type == "ssh" %}Port {{ c.port|default:22 }}{% if c.ssh_username %} / {{ c.ssh_username }}{% endif %}
+              {% elif c.check_type == "http" %}<span class="text-info">{{ c.url }}</span> [{{ c.expected_status_code }}]
+              {% endif %}
+            </td>
+            <td style="font-size:.82rem">{{ c.interval }}s</td>
+            <td>
+              <span class="badge check-status-badge badge-{{ c.last_status }}">{{ c.get_last_status_display }}</span>
+            </td>
+            <td class="check-last-msg" style="font-size:.78rem;color:#94a3b8;max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap"
+                title="{{ c.last_message }}">{{ c.last_message|default:"-" }}</td>
+            <td class="check-last-checked" style="font-size:.78rem;color:#64748b">
+              {% if c.last_checked %}{{ c.last_checked|date:"m-d H:i" }}{% else %}-{% endif %}
+            </td>
+            <td class="text-end">
+              <form method="post" action="/checks/{{ c.pk }}/toggle/" class="d-inline">
+                {% csrf_token %}
+                <button type="submit" class="btn btn-xs {% if c.enabled %}btn-outline-warning{% else %}btn-outline-secondary{% endif %}"
+                        style="font-size:.72rem;padding:1px 6px" title="{% if c.enabled %}停用{% else %}啟用{% endif %}">
+                  {% if c.enabled %}<i class="bi bi-pause-fill"></i>{% else %}<i class="bi bi-play-fill"></i>{% endif %}
+                </button>
+              </form>
+              <form method="post" action="/checks/{{ c.pk }}/delete/" class="d-inline"
+                    onsubmit="return confirm('確定刪除此監控項目？')">
+                {% csrf_token %}
+                <button type="submit" class="btn btn-xs btn-outline-danger"
+                        style="font-size:.72rem;padding:1px 6px">
+                  <i class="bi bi-trash"></i>
+                </button>
+              </form>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% else %}
+    <div class="text-center text-muted py-4">
+      <i class="bi bi-radar me-1"></i>尚未設定監控項目，請點「新增監控」
+    </div>
+    {% endif %}
   </div>
 </div>
 
@@ -141,6 +266,47 @@ function refreshLogs() {
       box.scrollTop = box.scrollHeight;
     });
 }
+
+const STATUS_LABELS = {online:"Online", offline:"Offline", warning:"Warning", unknown:"Unknown"};
+function refreshDeviceStatus() {
+  fetch("/api/device/{{ device.id }}/status/")
+    .then(r => r.json())
+    .then(data => {
+      // 更新設備狀態 badge
+      const badge = document.querySelector("h4 ~ .badge");
+      if (badge) {
+        badge.className = "badge text-white ms-2 badge-" + data.status;
+        badge.textContent = STATUS_LABELS[data.status] || data.status;
+      }
+      // 更新最後檢查時間
+      const lcEl = document.getElementById("last-checked-time");
+      if (lcEl && data.last_checked) lcEl.textContent = data.last_checked;
+      // 更新各監控項目狀態
+      data.checks.forEach(c => {
+        const row = document.getElementById("check-row-" + c.id);
+        if (!row) return;
+        const sb = row.querySelector(".check-status-badge");
+        if (sb) { sb.className = "badge check-status-badge badge-" + c.last_status; sb.textContent = STATUS_LABELS[c.last_status] || c.last_status; }
+        const msg = row.querySelector(".check-last-msg");
+        if (msg && c.last_message) { msg.textContent = c.last_message; msg.title = c.last_message; }
+        const lc = row.querySelector(".check-last-checked");
+        if (lc && c.last_checked) lc.textContent = c.last_checked;
+      });
+    });
+}
 setInterval(refreshLogs, 15000);
+setInterval(refreshDeviceStatus, 10000);
+refreshDeviceStatus(); // 頁面載入後立即執行一次
+
+function toggleCheckFields() {
+  const t = document.getElementById("id_check_type").value;
+  document.getElementById("field-port").style.display      = (t === "tcp" || t === "ssh") ? "" : "none";
+  document.getElementById("field-ssh-user").style.display  = (t === "ssh") ? "" : "none";
+  document.getElementById("field-ssh-pw").style.display    = (t === "ssh") ? "" : "none";
+  document.getElementById("field-url").style.display       = (t === "http") ? "" : "none";
+  document.getElementById("field-http-code").style.display = (t === "http") ? "" : "none";
+}
+// Run on load to set initial state
+toggleCheckFields();
 </script>
 {% endblock %}

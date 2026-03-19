@@ -10,14 +10,22 @@
         <form method="post">
           {% csrf_token %}
           {% for field in form %}
+          {% if not field.is_hidden %}
           <div class="mb-3">
-            <label class="form-label">{{ field.label }}</label>
+            <label class="form-label">
+              {{ field.label }}
+              {% if field.field.required %}<span class="text-danger ms-1" title="必填">*</span>{% endif %}
+            </label>
             {{ field }}
             {% if field.errors %}
               <div class="text-danger small mt-1">{{ field.errors|join:", " }}</div>
             {% endif %}
           </div>
+          {% else %}
+            {{ field }}
+          {% endif %}
           {% endfor %}
+          <p class="text-muted small mt-1"><span class="text-danger">*</span> 為必填欄位</p>
           <div class="d-flex gap-2">
             <button type="submit" class="btn btn-primary"><i class="bi bi-check2 me-1"></i>儲存</button>
             <a href="/" class="btn btn-outline-secondary">取消</a>
