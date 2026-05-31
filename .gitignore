@@ -8,3 +8,6 @@ venv/
 static/
 *.log
 *.pid
+
+# 稽核資料（本地保存，不納入版控）
+audit/
