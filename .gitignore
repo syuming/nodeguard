@@ -4,3 +4,7 @@ db.sqlite3
 *.env
 .env
 staticfiles/
+venv/
+static/
+*.log
+*.pid
