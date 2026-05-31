@@ -1,0 +1,21 @@
+/* 覆蓋 Bootstrap text-muted，在深色背景上提高對比度 */
+.text-muted { color: #94a3b8 !important; }
+
+/* 表格標題欄文字加亮 */
+.table thead th { color: #cbd5e1 !important; }
+
+/* 表格本文維持高對比 */
+.table tbody td { color: #e2e8f0; }
+
+/* Navbar 連結預設加亮，hover 更亮 */
+.nav-link { color: #cbd5e1 !important; }
+.nav-link:hover { color: #f1f5f9 !important; }
+
+/* 表單 label 加亮 */
+.form-label { color: #cbd5e1 !important; }
+
+/* Card header 文字 */
+.card-header { color: #e2e8f0; }
+
+/* code 元素 */
+code { color: #7dd3fc; }
