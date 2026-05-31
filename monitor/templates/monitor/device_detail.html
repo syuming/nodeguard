@@ -24,7 +24,7 @@
   <div class="card-header"><i class="bi bi-info-circle me-1"></i>設備資訊</div>
   <div class="card-body">
     <div class="row g-3">
-      <div class="col-md-6">
+      <div class="col-6">
         <table class="table table-sm mb-0">
           <tr><th style="width:38%;color:#64748b">客戶名稱</th><td>{{ device.customer_name|default:"-" }}</td></tr>
           <tr><th style="color:#64748b">客戶編號</th><td>{{ device.customer_id|default:"-" }}</td></tr>
@@ -32,7 +32,7 @@
           <tr><th style="color:#64748b">客戶地址</th><td style="white-space:pre-line">{{ device.customer_address|default:"-" }}</td></tr>
         </table>
       </div>
-      <div class="col-md-6">
+      <div class="col-6">
         <table class="table table-sm mb-0">
           <tr><th style="width:38%;color:#64748b">監控 IP</th><td><code>{{ device.ip_address }}</code></td></tr>
           <tr><th style="color:#64748b">設備類型</th><td>{{ device.get_device_type_display }}</td></tr>
@@ -62,7 +62,7 @@
       <form method="post" action="/device/{{ device.id }}/checks/add/" id="check-add-form">
         {% csrf_token %}
         <div class="row g-2 align-items-end">
-          <div class="col-sm-3 col-6">
+          <div class="col-3">
             <label class="form-label form-label-sm">監控類型</label>
             <select name="check_type" class="form-select form-select-sm" id="id_check_type" onchange="toggleCheckFields()">
               {% for val, label in check_form.check_type.field.choices %}
@@ -70,27 +70,27 @@
               {% endfor %}
             </select>
           </div>
-          <div class="col-sm-2 col-6" id="field-port">
+          <div class="col-2" id="field-port">
             <label class="form-label form-label-sm">Port</label>
             <input type="number" name="port" class="form-control form-control-sm" placeholder="22 / 80...">
           </div>
-          <div class="col-sm-2 col-6" id="field-ssh-user" style="display:none">
+          <div class="col-2" id="field-ssh-user" style="display:none">
             <label class="form-label form-label-sm">SSH 帳號</label>
             <input type="text" name="ssh_username" class="form-control form-control-sm" autocomplete="off">
           </div>
-          <div class="col-sm-2 col-6" id="field-ssh-pw" style="display:none">
+          <div class="col-2" id="field-ssh-pw" style="display:none">
             <label class="form-label form-label-sm">SSH 密碼</label>
             <input type="password" name="ssh_password" class="form-control form-control-sm" autocomplete="new-password">
           </div>
-          <div class="col-sm-4 col-12" id="field-url" style="display:none">
+          <div class="col-4" id="field-url" style="display:none">
             <label class="form-label form-label-sm">URL</label>
             <input type="text" name="url" class="form-control form-control-sm" placeholder="http://...">
           </div>
-          <div class="col-sm-2 col-6" id="field-http-code" style="display:none">
+          <div class="col-2" id="field-http-code" style="display:none">
             <label class="form-label form-label-sm">預期狀態碼</label>
             <input type="number" name="expected_status_code" class="form-control form-control-sm" value="200">
           </div>
-          <div class="col-sm-2 col-6">
+          <div class="col-2">
             <label class="form-label form-label-sm">間隔（秒）</label>
             <input type="number" name="interval" class="form-control form-control-sm" value="3" min="1">
           </div>
