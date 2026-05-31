@@ -1,19 +1,20 @@
 # NetMonitor - 網路設備監控系統
 
-基於 Django 開發的網路設備監控平台，支援 Cisco、Juniper、Linux 設備的 Ping / SSH 狀態監控，並提供多公司權限管理。
+基於 Django 開發的網路設備監控平台，支援 Cisco、Juniper、Linux 設備的 Ping / TCP / SSH / HTTP 狀態監控，並提供多公司權限管理。
 
 ---
 
 ## 系統需求
 
 - Python 3.10+
-- pip
+- git
+- curl
 
 ---
 
-## ⚡ Ubuntu 一鍵安裝
+## ⚡ 一鍵安裝
 
-在 Ubuntu 20.04 / 22.04 / 24.04 上，**不需要 sudo**，安裝至使用者目錄 `~/netmonitor`。
+適用 Ubuntu 20.04 / 22.04 / 24.04，**不需要 sudo**，安裝至 `~/netmonitor`。
 
 **前置需求（若尚未安裝）：**
 
@@ -21,16 +22,15 @@
 sudo apt-get install -y python3 python3-venv git curl
 ```
 
-**步驟 1：設定 GitHub Token**
+**步驟 1：取得 GitHub Token**
+
+前往 GitHub → Settings → Developer settings → Personal access tokens → Tokens (classic)，建立時勾選 `repo` 權限。
 
 ```bash
 export GH_TOKEN="ghp_你的Token"
 ```
 
-> Token 取得位置：GitHub → Settings → Developer settings → Personal access tokens → Tokens (classic)
-> 建立時勾選 `repo` 權限即可。
-
-**步驟 2：執行一鍵安裝**
+**步驟 2：執行安裝**
 
 ```bash
 curl -fsSL -H "Authorization: token $GH_TOKEN" \
@@ -38,43 +38,22 @@ curl -fsSL -H "Authorization: token $GH_TOKEN" \
   | GH_TOKEN=$GH_TOKEN bash
 ```
 
-安裝完成後，終端機會顯示：
+安裝完成後會顯示連線資訊：
 
 ```
 ╔══════════════════════════════════════════════╗
 ║          安裝完成！                          ║
 ╠══════════════════════════════════════════════╣
-║  安裝目錄：~/netmonitor
 ║  網址：    http://<伺服器IP>:8000
 ║  帳號：    admin
-║  密碼：    admin1234
-║  ⚠ 請登入後立即修改預設密碼！
+║  密碼：    Netmon@2026
+║  ⚠ 請登入後立即至「個人資料」修改密碼！
 ╚══════════════════════════════════════════════╝
 ```
 
-> ✅ 腳本會自動完成：下載程式碼、建立虛擬環境、初始化資料庫、建立管理員帳號、啟動服務。
-
 ---
 
-## 🔄 更新
-
-```bash
-bash ~/netmonitor/update.sh
-```
-
----
-
-## 🗑️ 移除
-
-完全移除並刪除所有資料（輸入 `YES` 確認）：
-
-```bash
-bash ~/netmonitor/uninstall.sh
-```
-
----
-
-## ▶️ 常用指令
+## 常用指令
 
 | 動作 | 指令 |
 |------|------|
@@ -86,192 +65,51 @@ bash ~/netmonitor/uninstall.sh
 
 ---
 
-## 安裝步驟
-
-### 1. 取得程式碼
-
-```bash
-git clone <repo-url>
-cd monitor
-```
-
-### 2. 安裝相依套件
-
-```bash
-pip install django netmiko paramiko
-```
-
-> 若系統環境有衝突，加上 `--break-system-packages`：
-> ```bash
-> pip install django netmiko paramiko --break-system-packages --ignore-installed pyyaml
-> ```
-
-### 3. 初始化資料庫
-
-```bash
-python manage.py migrate
-```
-
-### 4. 建立管理者帳號
-
-```bash
-python manage.py createsuperuser
-```
-
-### 5. 收集靜態檔案
-
-```bash
-python manage.py collectstatic --noinput
-```
-
----
-
-## 正式部署（Gunicorn + Nginx + Supervisor）
-
-開發測試用 `runserver` 即可，**正式上線請用以下方式**。
-
-### 安裝套件
-
-```bash
-pip install gunicorn --break-system-packages
-apt-get install -y nginx supervisor
-```
-
-### Supervisor 設定
-
-建立 `/etc/supervisor/conf.d/netmonitor.conf`：
-
-```ini
-[program:netmonitor]
-command=/usr/local/bin/gunicorn --workers 3 --bind unix:/run/netmonitor.sock --access-logfile /var/log/netmonitor/access.log --error-logfile /var/log/netmonitor/error.log netmonitor.wsgi:application
-directory=/home/user/test1
-user=root
-autostart=true
-autorestart=true
-redirect_stderr=true
-stopasgroup=true
-killasgroup=true
-
-[program:nginx]
-command=/usr/sbin/nginx -g "daemon off;"
-autostart=true
-autorestart=true
-redirect_stderr=true
-```
-
-### Nginx 設定
-
-建立 `/etc/nginx/sites-available/netmonitor`：
-
-```nginx
-server {
-    listen 80;
-    server_name _;
-
-    location /static/ {
-        alias /home/user/test1/staticfiles/;
-    }
-
-    location / {
-        include proxy_params;
-        proxy_pass http://unix:/run/netmonitor.sock;
-    }
-}
-```
-
-啟用設定：
-
-```bash
-ln -sf /etc/nginx/sites-available/netmonitor /etc/nginx/sites-enabled/netmonitor
-rm -f /etc/nginx/sites-enabled/default
-mkdir -p /var/log/netmonitor
-```
-
-### 啟動服務
-
-```bash
-supervisord -c /etc/supervisor/supervisord.conf
-```
-
-確認狀態：
-
-```bash
-supervisorctl status
-```
-
-### 常用管理指令
-
-```bash
-supervisorctl status          # 查看所有服務狀態
-supervisorctl restart all     # 重啟所有服務
-supervisorctl restart netmonitor  # 只重啟 Django
-supervisorctl stop all        # 停止所有服務
-tail -f /var/log/netmonitor/error.log   # 查看錯誤 log
-```
-
-開啟瀏覽器前往 `http://<伺服器IP>/`
-
----
-
-## 帳號權限說明
+## 帳號權限
 
 | 角色 | 說明 |
 |------|------|
 | **系統管理者** | 可查看、管理所有公司的所有設備 |
 | **公司管理者** | 只能查看與管理自己公司的設備 |
 
-使用者角色與公司的對應，請至 `/admin/` 後台的「使用者設定」中設定。
-
 ---
 
-## 後台管理
+## 監控類型
 
-```
-http://localhost:8000/admin/
-```
-
-在後台可以：
-- 新增 / 管理公司（Company）
-- 設定使用者角色與所屬公司（UserProfile）
-- 管理設備與 Log
-
----
-
-## 設備監控流程
-
-每次執行「立即檢查」或「全部檢查」時，系統依序：
-
-1. **Ping** — 確認設備是否存活
-2. **Port Check** — 確認 SSH Port 是否開啟
-3. **SSH 連線**（需填入帳號密碼）— 擷取設備資訊
-
-| 結果 | 狀態 |
+| 類型 | 說明 |
 |------|------|
-| Ping 失敗 | Offline |
-| Ping 成功、Port 關閉或 SSH 失敗 | Warning |
-| SSH 成功 | Online |
+| **Ping** | ICMP 存活確認 |
+| **TCP** | 指定 Port 連線測試 |
+| **SSH** | SSH 登入並執行 show 指令 |
+| **HTTP** | HTTP/HTTPS 狀態碼確認 |
 
-支援設備類型：`Cisco IOS`、`Cisco NX-OS`、`Juniper JunOS`、`Linux`、`Generic`
+支援設備：`Cisco IOS`、`Cisco NX-OS`、`Juniper JunOS`、`Linux`、`Generic`
+
+---
+
+## 狀態說明
+
+| 狀態 | 說明 |
+|------|------|
+| 🟢 Online | 所有監控項目正常 |
+| 🟡 Warning | 部分監控項目異常 |
+| 🔴 Offline | 主要監控項目失敗 |
+| ⚪ Unknown | 尚未執行過檢查 |
 
 ---
 
 ## 專案結構
 
 ```
-manage.py
-netmonitor/          # Django 設定
+netmonitor/          # Django 設定、wsgi
 monitor/
-  models.py          # Company, UserProfile, Device, DeviceLog
-  views.py           # Dashboard, 登入, CRUD, API
-  utils.py           # Ping / Port / SSH 監控邏輯
-  forms.py           # DeviceForm
+  models.py          # Company、Device、MonitorCheck、DeviceLog、DowntimeRecord
+  views.py           # Dashboard、設備管理、使用者管理、API
+  utils.py           # Ping / TCP / SSH / HTTP 監控邏輯
+  forms.py           # 表單定義
   urls.py            # 路由設定
-  admin.py           # 後台設定
-  templates/
-    monitor/
-      base.html
-      login.html
-      dashboard.html
-      device_detail.html
-      device_form.html
+  templates/monitor/ # HTML 範本
+static/              # Bootstrap 5、Bootstrap Icons、custom.css
+install.sh           # 一鍵安裝
+start.sh / stop.sh / status.sh / update.sh
 ```
