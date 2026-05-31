@@ -11,3 +11,6 @@ static/
 
 # 稽核資料（本地保存，不納入版控）
 audit/
+
+# Claude Code
+CLAUDE.md
