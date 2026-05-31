@@ -21,29 +21,29 @@
 </div>
 
 <!-- Tab 導覽 -->
-<ul class="nav nav-tabs mb-0" id="deviceTabs" style="border-bottom-color:#334155">
+<ul class="nav nav-tabs mb-0" id="deviceTabs">
   <li class="nav-item">
     <a class="nav-link active" id="tab-info" data-bs-toggle="tab" href="#pane-info"
-       style="color:#94a3b8;border-color:transparent">
+       style="color:#64748b;border-color:transparent">
       <i class="bi bi-info-circle me-1"></i>設備資訊
     </a>
   </li>
   <li class="nav-item">
     <a class="nav-link" id="tab-monitors" data-bs-toggle="tab" href="#pane-monitors"
-       style="color:#94a3b8;border-color:transparent">
+       style="color:#64748b;border-color:transparent">
       <i class="bi bi-radar me-1"></i>監控設定
       {% if checks %}<span class="badge bg-secondary ms-1" style="font-size:.7rem">{{ checks|length }}</span>{% endif %}
     </a>
   </li>
   <li class="nav-item">
     <a class="nav-link" id="tab-downtime" data-bs-toggle="tab" href="#pane-downtime"
-       style="color:#94a3b8;border-color:transparent">
+       style="color:#64748b;border-color:transparent">
       <i class="bi bi-exclamation-triangle me-1"></i>斷線記錄
     </a>
   </li>
   <li class="nav-item">
     <a class="nav-link" id="tab-log" data-bs-toggle="tab" href="#pane-log"
-       style="color:#94a3b8;border-color:transparent">
+       style="color:#64748b;border-color:transparent">
       <i class="bi bi-terminal me-1"></i>Log
     </a>
   </li>
@@ -58,36 +58,36 @@
         <div class="row g-4">
           <!-- 基本設定 -->
           <div class="col-6">
-            <h6 class="mb-3" style="color:#38bdf8;border-bottom:1px solid #334155;padding-bottom:6px">
+            <h6 class="mb-3" style="color:#0ea5e9;border-bottom:1px solid var(--border-color);padding-bottom:6px">
               <i class="bi bi-hdd-network me-1"></i>基本設定
             </h6>
             <table class="table table-sm mb-0">
-              <tr><th style="width:38%;color:#64748b">設備名稱</th><td>{{ device.name }}</td></tr>
-              <tr><th style="color:#64748b">IP 位址</th><td><code>{{ device.ip_address }}</code></td></tr>
-              <tr><th style="color:#64748b">設備類型</th><td>{{ device.get_device_type_display }}</td></tr>
-              <tr><th style="color:#64748b">所屬公司</th><td>
+              <tr><th style="width:38%;color:#94a3b8">設備名稱</th><td>{{ device.name }}</td></tr>
+              <tr><th style="color:var(--text-th)">IP 位址</th><td><code>{{ device.ip_address }}</code></td></tr>
+              <tr><th style="color:var(--text-th)">設備類型</th><td>{{ device.get_device_type_display }}</td></tr>
+              <tr><th style="color:var(--text-th)">所屬公司</th><td>
                 {% if device.company %}
                   <a href="/company/{{ device.company.id }}/" style="color:#38bdf8;text-decoration:none">{{ device.company.name }}</a>
                 {% else %}-{% endif %}
               </td></tr>
-              <tr><th style="color:#64748b">最後檢查</th><td>
+              <tr><th style="color:var(--text-th)">最後檢查</th><td>
                 <span id="last-checked-time" style="font-size:.85rem">
                   {% if device.last_checked %}{{ device.last_checked|date:"Y-m-d H:i:s" }}{% else %}-{% endif %}
                 </span>
               </td></tr>
-              <tr><th style="color:#64748b">描述</th><td style="font-size:.85rem">{{ device.description|default:"-" }}</td></tr>
+              <tr><th style="color:var(--text-th)">描述</th><td style="font-size:.85rem">{{ device.description|default:"-" }}</td></tr>
             </table>
           </div>
           <!-- 客戶資料 -->
           <div class="col-6">
-            <h6 class="mb-3" style="color:#38bdf8;border-bottom:1px solid #334155;padding-bottom:6px">
+            <h6 class="mb-3" style="color:#0ea5e9;border-bottom:1px solid var(--border-color);padding-bottom:6px">
               <i class="bi bi-person-lines-fill me-1"></i>客戶資料
             </h6>
             <table class="table table-sm mb-0">
-              <tr><th style="width:38%;color:#64748b">客戶名稱</th><td>{{ device.customer_name|default:"-" }}</td></tr>
-              <tr><th style="color:#64748b">客戶編號</th><td>{{ device.customer_id|default:"-" }}</td></tr>
-              <tr><th style="color:#64748b">電路編號</th><td>{{ device.circuit_number|default:"-" }}</td></tr>
-              <tr><th style="color:#64748b">客戶地址</th><td style="white-space:pre-line">{{ device.customer_address|default:"-" }}</td></tr>
+              <tr><th style="width:38%;color:#94a3b8">客戶名稱</th><td>{{ device.customer_name|default:"-" }}</td></tr>
+              <tr><th style="color:var(--text-th)">客戶編號</th><td>{{ device.customer_id|default:"-" }}</td></tr>
+              <tr><th style="color:var(--text-th)">電路編號</th><td>{{ device.circuit_number|default:"-" }}</td></tr>
+              <tr><th style="color:var(--text-th)">客戶地址</th><td style="white-space:pre-line">{{ device.customer_address|default:"-" }}</td></tr>
             </table>
           </div>
         </div>
@@ -108,7 +108,7 @@
       </div>
 
       <div class="collapse" id="add-check-panel">
-        <div class="card-body border-bottom" style="background:#0f1e30">
+        <div class="card-body border-bottom" style="background:var(--bg-panel)">
           <form method="post" action="/device/{{ device.id }}/checks/add/" id="check-add-form">
             {% csrf_token %}
             <div class="row g-2 align-items-end">
@@ -290,27 +290,6 @@
 
 {% block scripts %}
 <script>
-/* ── Tab 樣式：active 時高亮 ── */
-document.querySelectorAll("#deviceTabs .nav-link").forEach(el => {
-  el.addEventListener("shown.bs.tab", () => {
-    document.querySelectorAll("#deviceTabs .nav-link").forEach(t => {
-      t.style.color = "#94a3b8";
-      t.style.borderColor = "transparent";
-      t.style.background = "transparent";
-    });
-    el.style.color = "#e2e8f0";
-    el.style.borderColor = "#334155 #334155 #1e293b";
-    el.style.background = "#1e293b";
-  });
-});
-// 初始化 active tab 樣式
-const activeTab = document.querySelector("#deviceTabs .nav-link.active");
-if (activeTab) {
-  activeTab.style.color = "#e2e8f0";
-  activeTab.style.borderColor = "#334155 #334155 #1e293b";
-  activeTab.style.background = "#1e293b";
-}
-
 /* ── CSRF helper ── */
 function getCookie(name) {
   const v = document.cookie.match('(^|;) ?' + name + '=([^;]*)(;|$)');

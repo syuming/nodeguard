@@ -10,13 +10,50 @@
   <link href="{% static 'icons/bootstrap-icons.min.css' %}" rel="stylesheet">
   <link href="{% static 'css/custom.css' %}" rel="stylesheet">
   <style>
-    body { background: #0f172a; color: #e2e8f0; font-family: 'Segoe UI', sans-serif; min-width: 1100px; }
-    .navbar { background: #1e293b !important; border-bottom: 1px solid #334155; }
+    /* ── 深色主題（預設） ── */
+    html {
+      --bg-body:        #0f172a;
+      --bg-card:        #1e293b;
+      --bg-card-header: #273549;
+      --bg-table-head:  #273549;
+      --bg-table-hover: #273549;
+      --bg-input:       #0f172a;
+      --bg-panel:       #0f1e30;
+      --border-color:   #334155;
+      --text-primary:   #e2e8f0;
+      --text-secondary: #94a3b8;
+      --text-th:        #94a3b8;
+      --text-label:     #94a3b8;
+      --input-color:    #e2e8f0;
+      --code-color:     #7dd3fc;
+      --log-bg:         #0f172a;
+    }
+    /* ── 淺色主題 ── */
+    html[data-theme="light"] {
+      --bg-body:        #f0f4f8;
+      --bg-card:        #ffffff;
+      --bg-card-header: #f8fafc;
+      --bg-table-head:  #f1f5f9;
+      --bg-table-hover: #f8fafc;
+      --bg-input:       #ffffff;
+      --bg-panel:       #f8fafc;
+      --border-color:   #e2e8f0;
+      --text-primary:   #1e293b;
+      --text-secondary: #475569;
+      --text-th:        #475569;
+      --text-label:     #475569;
+      --input-color:    #1e293b;
+      --code-color:     #0369a1;
+      --log-bg:         #1e293b;
+    }
+
+    body { background: var(--bg-body); color: var(--text-primary); font-family: 'Segoe UI', sans-serif; min-width: 1100px; }
+    .navbar { background: #1e293b !important; border-bottom: 1px solid #0f172a; }
     .navbar-brand { color: #38bdf8 !important; font-weight: 700; letter-spacing: 1px; }
-    .nav-link { color: #94a3b8 !important; }
-    .nav-link:hover { color: #38bdf8 !important; }
-    .card { background: #1e293b; border: 1px solid #334155; border-radius: 12px; }
-    .card-header { background: #273549; border-bottom: 1px solid #334155; font-weight: 600; }
+    .navbar .nav-link { color: #94a3b8 !important; }
+    .navbar .nav-link:hover { color: #38bdf8 !important; }
+    .card { background: var(--bg-card); border: 1px solid var(--border-color); border-radius: 12px; }
+    .card-header { background: var(--bg-card-header); border-bottom: 1px solid var(--border-color); font-weight: 600; color: var(--text-primary); }
     .stat-card { transition: transform .2s; }
     .stat-card:hover { transform: translateY(-3px); }
     .badge-online  { background: #22c55e; }
@@ -29,20 +66,37 @@
     .dot-warning { background: #f59e0b; }
     .dot-unknown { background: #64748b; }
     @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.5} }
-    .table { color: #e2e8f0; }
-    .table thead th { background: #273549; color: #94a3b8; border-color: #334155; }
-    .table tbody tr { border-color: #334155; }
-    .table tbody tr:hover { background: #273549; }
+    .table {
+      color: var(--text-primary);
+      --bs-table-bg: transparent;
+      --bs-table-color: var(--text-primary);
+      --bs-table-border-color: var(--border-color);
+      --bs-table-hover-bg: var(--bg-table-hover);
+      --bs-table-hover-color: var(--text-primary);
+      --bs-table-striped-bg: transparent;
+      --bs-table-accent-bg: transparent;
+    }
+    .table > :not(caption) > * > * { background-color: transparent !important; box-shadow: none !important; }
+    .table thead th { background: var(--bg-table-head); color: var(--text-th); border-color: var(--border-color); }
+    .table tbody tr { border-color: var(--border-color); }
+    .table tbody tr:hover > * { background: var(--bg-table-hover) !important; }
     .btn-primary { background: #0ea5e9; border-color: #0ea5e9; }
     .btn-primary:hover { background: #0284c7; border-color: #0284c7; }
-    .log-box { background: #0f172a; border: 1px solid #334155; border-radius: 8px; padding: 12px; font-family: monospace; font-size: .82rem; max-height: 400px; overflow-y: auto; }
+    .log-box { background: var(--log-bg); border: 1px solid #334155; border-radius: 8px; padding: 12px; font-family: monospace; font-size: .82rem; max-height: 400px; overflow-y: auto; }
     .log-info    { color: #94a3b8; }
-    .log-success { color: #22c55e; }
-    .log-warning { color: #f59e0b; }
-    .log-error   { color: #ef4444; }
-    .form-control, .form-select { background: #0f172a; border-color: #334155; color: #e2e8f0; }
-    .form-control:focus, .form-select:focus { background: #0f172a; border-color: #38bdf8; color: #e2e8f0; box-shadow: 0 0 0 .2rem rgba(56,189,248,.2); }
-    .form-label { color: #94a3b8; }
+    .log-success { color: #4ade80; }
+    .log-warning { color: #fbbf24; }
+    .log-error   { color: #f87171; }
+    .form-control, .form-select { background: var(--bg-input); border-color: var(--border-color); color: var(--input-color); }
+    .form-control:focus, .form-select:focus { background: var(--bg-input); border-color: #0ea5e9; color: var(--input-color); box-shadow: 0 0 0 .2rem rgba(14,165,233,.15); }
+    .form-label { color: var(--text-label); }
+    /* ── Tab 導覽 ── */
+    .nav-tabs { border-bottom-color: var(--border-color) !important; }
+    .nav-tabs .nav-link { color: var(--text-secondary) !important; border-color: transparent !important; background: transparent !important; }
+    .nav-tabs .nav-link.active { color: var(--text-primary) !important; background: var(--bg-card) !important; }
+    html .nav-tabs .nav-link.active     { border-color: #334155 #334155 var(--bg-card) !important; }
+    html[data-theme="light"] .nav-tabs .nav-link.active { border-color: #e2e8f0 #e2e8f0 var(--bg-card) !important; }
+    .nav-tabs .nav-link:hover:not(.active) { color: var(--text-primary) !important; }
   </style>
 </head>
 <body>
@@ -75,6 +129,11 @@
           </span>
         </li>
         <li class="nav-item"><a class="nav-link" href="/profile/"><i class="bi bi-person-gear me-1"></i>個人資料</a></li>
+        <li class="nav-item">
+          <button id="theme-btn" onclick="toggleTheme()" class="btn btn-sm btn-outline-secondary ms-1" style="border-color:#475569;color:#94a3b8" title="切換主題">
+            <i class="bi bi-moon-fill"></i>
+          </button>
+        </li>
         <li class="nav-item"><a class="nav-link" href="/logout/"><i class="bi bi-box-arrow-right me-1"></i>登出</a></li>
         {% endif %}
       </ul>
@@ -94,6 +153,28 @@
 </div>
 
 <script src="{% static 'js/bootstrap.bundle.min.js' %}"></script>
+<script>
+function toggleTheme() {
+  const html = document.documentElement;
+  const next = html.getAttribute('data-theme') === 'light' ? 'dark' : 'light';
+  html.setAttribute('data-theme', next);
+  localStorage.setItem('nm-theme', next);
+  updateThemeBtn(next);
+}
+function updateThemeBtn(theme) {
+  const btn = document.getElementById('theme-btn');
+  if (!btn) return;
+  btn.innerHTML = theme === 'light'
+    ? '<i class="bi bi-moon-fill"></i>'
+    : '<i class="bi bi-sun-fill"></i>';
+  btn.title = theme === 'light' ? '切換深色模式' : '切換淺色模式';
+}
+(function() {
+  const saved = localStorage.getItem('nm-theme') || 'dark';
+  document.documentElement.setAttribute('data-theme', saved);
+  document.addEventListener('DOMContentLoaded', () => updateThemeBtn(saved));
+})();
+</script>
 {% block scripts %}{% endblock %}
 </body>
 </html>
