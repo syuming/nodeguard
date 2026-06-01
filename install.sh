@@ -1,13 +1,12 @@
 #!/usr/bin/env bash
 # =============================================================================
 #  NetMonitor 一鍵安裝腳本
-#  安裝位置：~/netmonitor
 #
-#  用法：
-#    export GH_TOKEN="ghp_你的Token"
-#    curl -fsSL -H "Authorization: token $GH_TOKEN" \
-#      https://raw.githubusercontent.com/syuming/monitor/main/install.sh \
-#      | GH_TOKEN=$GH_TOKEN bash
+#  一行安裝（需 SSH key 已設定）：
+#    bash <(curl -fsSL https://raw.githubusercontent.com/syuming/monitor/main/install.sh)
+#
+#  或先 clone 再安裝：
+#    git clone git@github.com:syuming/monitor ~/netmonitor && bash ~/netmonitor/install.sh
 # =============================================================================
 
 set -euo pipefail
@@ -20,11 +19,8 @@ success() { echo -e "${GREEN}[OK]${RESET}    $*"; }
 warn()    { echo -e "${YELLOW}[WARN]${RESET}  $*"; }
 error()   { echo -e "${RED}[ERROR]${RESET} $*"; exit 1; }
 
-GH_TOKEN="${GH_TOKEN:-}"
-[[ -z "$GH_TOKEN" ]] && error "請先設定 GH_TOKEN：\n  export GH_TOKEN=\"ghp_你的Token\"\n  然後重新執行安裝指令"
-
 APP_DIR="${HOME}/netmonitor"
-REPO_URL="https://${GH_TOKEN}@github.com/syuming/monitor.git"
+REPO_SSH="git@github.com:syuming/monitor.git"
 APP_PORT="8000"
 ADMIN_USER="admin"
 ADMIN_PASS="Netmon@2026"
@@ -37,22 +33,30 @@ echo ""
 
 # ── 1. 檢查必要工具 ──────────────────────────────────────────────────────────
 info "檢查系統環境..."
-for cmd in python3 git curl; do
+for cmd in python3 git; do
     command -v "$cmd" &>/dev/null || error "找不到 ${cmd}，請先安裝：sudo apt-get install -y ${cmd}"
 done
 success "系統環境正常（$(python3 --version)）"
 
-# ── 2. 下載程式碼 ─────────────────────────────────────────────────────────────
-if [[ -d "$APP_DIR/.git" ]]; then
+# ── 2. 取得程式碼 ─────────────────────────────────────────────────────────────
+# 若 install.sh 本身就在 repo 內（clone 後直接執行），直接用該目錄，不重複 clone
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]:-}")" 2>/dev/null && pwd || true)"
+REPO_ORIGIN="$(git -C "${SCRIPT_DIR}" remote get-url origin 2>/dev/null || true)"
+
+if [[ "$REPO_ORIGIN" == *"syuming/monitor"* ]]; then
+    APP_DIR="$SCRIPT_DIR"
+    info "使用現有目錄：${APP_DIR}"
+    git -C "$APP_DIR" pull --quiet && success "程式碼已更新" || warn "git pull 失敗，使用現有版本"
+elif [[ -d "${APP_DIR}/.git" ]]; then
     warn "${APP_DIR} 已存在，執行 git pull 更新..."
-    cd "$APP_DIR"
-    git pull --quiet
+    git -C "$APP_DIR" pull --quiet
+    success "程式碼已更新"
 else
     info "從 GitHub 下載程式碼至 ${APP_DIR}..."
-    git clone --quiet "$REPO_URL" "$APP_DIR"
-    cd "$APP_DIR"
+    git clone --quiet "$REPO_SSH" "$APP_DIR"
+    success "程式碼就緒"
 fi
-success "程式碼就緒"
+cd "$APP_DIR"
 
 # ── 3. 建立 Python 虛擬環境 ───────────────────────────────────────────────────
 if [[ ! -d "${APP_DIR}/venv" ]]; then
@@ -70,15 +74,11 @@ pip install --quiet --upgrade pip
 pip install --quiet -r requirements.txt
 success "Python 套件安裝完成"
 
-# ── 5. 建立 .env ─────────────────────────────────────────────────────────────
+# ── 5. 建立 .env ──────────────────────────────────────────────────────────────
 if [[ ! -f "${APP_DIR}/.env" ]]; then
     info "產生設定檔 .env..."
     SECRET_KEY=$(python3 -c "import secrets,string; print(''.join(secrets.choice(string.ascii_letters+string.digits+'!@#%^&*-_=+') for _ in range(50)))")
-    cat > "${APP_DIR}/.env" <<EOF
-SECRET_KEY=${SECRET_KEY}
-DEBUG=False
-ALLOWED_HOSTS=localhost,127.0.0.1
-EOF
+    printf 'SECRET_KEY=%s\nDEBUG=False\nALLOWED_HOSTS=localhost,127.0.0.1\n' "${SECRET_KEY}" > "${APP_DIR}/.env"
     success ".env 建立完成"
 else
     info ".env 已存在，略過"
