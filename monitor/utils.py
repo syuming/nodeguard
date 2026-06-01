@@ -26,7 +26,8 @@ def _snmp_get(ip, community, oids, port=161, timeout=3):
 def _format_uptime(centiseconds):
     """Convert SNMP sysUpTime (centiseconds) to human-readable string."""
     try:
-        secs = int(centiseconds) // 100
+        val = centiseconds.pythonize() if hasattr(centiseconds, "pythonize") else int(centiseconds)
+        secs = val // 100
         days, rem = divmod(secs, 86400)
         hours, rem = divmod(rem, 3600)
         minutes = rem // 60
@@ -72,12 +73,12 @@ def snmp_scan_interfaces(ip, community="public", port=161, timeout=5):
 
         async for vb in client.walk(OID_STATUS):
             idx = int(str(vb.oid).split(".")[-1])
-            status_map[idx] = STATUS_MAP.get(int(vb.value), str(vb.value))
+            status_map[idx] = STATUS_MAP.get(vb.value.pythonize(), str(vb.value))
 
         async for vb in client.walk(OID_SPEED):
             idx = int(str(vb.oid).split(".")[-1])
             try:
-                speed_mbps = int(vb.value) // 1_000_000
+                speed_mbps = vb.value.pythonize() // 1_000_000
             except Exception:
                 speed_mbps = 0
             speed_map[idx] = speed_mbps
