@@ -24,7 +24,7 @@ sudo apt-get install -y python3 python3-venv git
 **執行安裝：**
 
 ```bash
-bash <(curl -fsSL https://raw.githubusercontent.com/syuming/nodeguard/main/install.sh)
+curl -fsSL https://raw.githubusercontent.com/syuming/nodeguard/main/install.sh | bash
 ```
 
 安裝完成後會顯示連線資訊：
