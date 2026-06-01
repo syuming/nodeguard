@@ -14,6 +14,9 @@
     <button class="btn btn-sm btn-primary" onclick="checkDevice({{ device.id }})">
       <i class="bi bi-arrow-repeat me-1"></i>立即檢查
     </button>
+    <button class="btn btn-sm btn-outline-info" onclick="openSnmpScan()">
+      <i class="bi bi-diagram-3 me-1"></i>SNMP 掃描
+    </button>
     <a href="/device/{{ device.id }}/edit/" class="btn btn-sm btn-outline-warning">
       <i class="bi bi-pencil me-1"></i>編輯設備
     </a>
@@ -302,6 +305,61 @@
   </div>
 
 </div><!-- end tab-content -->
+
+<!-- SNMP 掃描 Modal -->
+<div class="modal fade" id="snmpScanModal" tabindex="-1">
+  <div class="modal-dialog modal-lg">
+    <div class="modal-content" style="background:#1e293b;border:1px solid #334155">
+      <div class="modal-header" style="border-bottom:1px solid #334155">
+        <h5 class="modal-title"><i class="bi bi-diagram-3 me-2"></i>SNMP Interface 掃描</h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <!-- 掃描設定 -->
+        <div class="row g-2 mb-3">
+          <div class="col-4">
+            <label class="form-label form-label-sm">Community String</label>
+            <input type="text" id="scan-community" class="form-control form-control-sm" value="public">
+          </div>
+          <div class="col-2">
+            <label class="form-label form-label-sm">SNMP Port</label>
+            <input type="number" id="scan-port" class="form-control form-control-sm" value="161">
+          </div>
+          <div class="col-auto d-flex align-items-end">
+            <button class="btn btn-sm btn-primary" onclick="runSnmpScan()">
+              <i class="bi bi-search me-1"></i>開始掃描
+            </button>
+          </div>
+        </div>
+        <!-- 掃描狀態 -->
+        <div id="scan-status" class="text-muted small mb-2" style="display:none"></div>
+        <!-- Interface 列表 -->
+        <div id="scan-results" style="display:none">
+          <p class="small text-muted mb-2">選擇要監控的 Interface：</p>
+          <div class="table-responsive">
+            <table class="table table-sm table-hover mb-0">
+              <thead>
+                <tr>
+                  <th style="width:40px"><input type="checkbox" id="scan-check-all" onchange="toggleAllInterfaces(this)"></th>
+                  <th>Interface</th>
+                  <th>狀態</th>
+                  <th>速率</th>
+                </tr>
+              </thead>
+              <tbody id="scan-table-body"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer" style="border-top:1px solid #334155">
+        <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">關閉</button>
+        <button type="button" class="btn btn-success btn-sm" id="scan-add-btn" onclick="addSelectedInterfaces()" style="display:none">
+          <i class="bi bi-plus-lg me-1"></i>新增選取的監控項目
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
 {% endblock %}
 
 {% block scripts %}
@@ -378,5 +436,93 @@ function toggleCheckFields() {
   document.getElementById("field-snmp-port").style.display      = (t === "snmp") ? "" : "none";
 }
 toggleCheckFields();
+
+/* ── SNMP 掃描 ── */
+let _scannedInterfaces = [];
+
+function openSnmpScan() {
+  document.getElementById("scan-status").style.display = "none";
+  document.getElementById("scan-results").style.display = "none";
+  document.getElementById("scan-add-btn").style.display = "none";
+  document.getElementById("scan-table-body").innerHTML = "";
+  new bootstrap.Modal(document.getElementById("snmpScanModal")).show();
+}
+
+function runSnmpScan() {
+  const community = document.getElementById("scan-community").value || "public";
+  const port      = parseInt(document.getElementById("scan-port").value) || 161;
+  const statusEl  = document.getElementById("scan-status");
+  statusEl.style.display = "";
+  statusEl.innerHTML = '<i class="bi bi-arrow-repeat spin me-1"></i>掃描中...';
+  document.getElementById("scan-results").style.display = "none";
+  document.getElementById("scan-add-btn").style.display = "none";
+
+  fetch("/api/device/{{ device.id }}/snmp-scan/", {
+    method: "POST",
+    headers: {"X-CSRFToken": getCookie("csrftoken"), "Content-Type": "application/json"},
+    body: JSON.stringify({community, port})
+  })
+  .then(r => r.json())
+  .then(data => {
+    if (!data.ok) {
+      statusEl.innerHTML = `<span class="text-danger"><i class="bi bi-x-circle me-1"></i>${data.error}</span>`;
+      return;
+    }
+    _scannedInterfaces = data.interfaces;
+    statusEl.innerHTML = `<span class="text-success"><i class="bi bi-check-circle me-1"></i>掃描完成，找到 ${data.interfaces.length} 個 interface</span>`;
+    renderScanResults(data.interfaces);
+  })
+  .catch(e => {
+    statusEl.innerHTML = `<span class="text-danger"><i class="bi bi-x-circle me-1"></i>${e}</span>`;
+  });
+}
+
+function renderScanResults(interfaces) {
+  const tbody = document.getElementById("scan-table-body");
+  tbody.innerHTML = "";
+  interfaces.forEach(iface => {
+    const statusColor = iface.status === "up" ? "#22c55e" : iface.status === "down" ? "#ef4444" : "#64748b";
+    const speed = iface.speed_mbps ? `${iface.speed_mbps} Mbps` : "-";
+    tbody.innerHTML += `
+      <tr>
+        <td><input type="checkbox" class="iface-cb" data-index="${iface.index}" data-descr="${iface.descr}"></td>
+        <td><code style="color:#94a3b8">${iface.descr}</code></td>
+        <td><span style="color:${statusColor}">● ${iface.status}</span></td>
+        <td class="text-muted">${speed}</td>
+      </tr>`;
+  });
+  document.getElementById("scan-results").style.display = "";
+  document.getElementById("scan-add-btn").style.display = "";
+}
+
+function toggleAllInterfaces(cb) {
+  document.querySelectorAll(".iface-cb").forEach(el => el.checked = cb.checked);
+}
+
+function addSelectedInterfaces() {
+  const selected = [...document.querySelectorAll(".iface-cb:checked")];
+  if (!selected.length) { alert("請先選取要監控的 Interface"); return; }
+  const community = document.getElementById("scan-community").value || "public";
+  const port      = parseInt(document.getElementById("scan-port").value) || 161;
+
+  const promises = selected.map(cb => {
+    const formData = new FormData();
+    formData.append("csrfmiddlewaretoken", getCookie("csrftoken"));
+    formData.append("check_type", "snmp");
+    formData.append("snmp_community", community);
+    formData.append("snmp_version", "2");
+    formData.append("snmp_port", port);
+    formData.append("interval", "60");
+    formData.append("enabled", "true");
+    formData.append("snmp_interface_index", cb.dataset.index);
+    formData.append("snmp_interface_descr", cb.dataset.descr);
+    return fetch("/device/{{ device.id }}/checks/add/", {method:"POST", body: formData});
+  });
+
+  Promise.all(promises).then(() => {
+    bootstrap.Modal.getInstance(document.getElementById("snmpScanModal")).hide();
+    location.reload();
+  });
+}
 </script>
 {% endblock %}

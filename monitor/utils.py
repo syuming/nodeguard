@@ -41,6 +41,60 @@ def _format_uptime(centiseconds):
         return str(centiseconds)
 
 
+def snmp_scan_interfaces(ip, community="public", port=161, timeout=5):
+    """
+    Walk IF-MIB and return list of interfaces:
+    [{"index": 1, "descr": "eth0", "status": "up", "speed_mbps": 1000}, ...]
+    Raises on connection failure.
+    """
+    import asyncio
+    from functools import partial
+    from puresnmp import Client, V2C
+    from puresnmp.transport import send_udp
+    from x690.types import ObjectIdentifier
+
+    OID_DESCR  = ObjectIdentifier("1.3.6.1.2.1.2.2.1.2")   # ifDescr
+    OID_STATUS = ObjectIdentifier("1.3.6.1.2.1.2.2.1.8")   # ifOperStatus
+    OID_SPEED  = ObjectIdentifier("1.3.6.1.2.1.2.2.1.5")   # ifSpeed (bps)
+
+    STATUS_MAP = {1: "up", 2: "down", 3: "testing", 4: "unknown",
+                  5: "dormant", 6: "notPresent", 7: "lowerLayerDown"}
+
+    async def _walk():
+        sender = partial(send_udp, timeout=timeout, retries=1)
+        client = Client(ip, V2C(community), port=port, sender=sender)
+
+        descr_map, status_map, speed_map = {}, {}, {}
+
+        async for vb in client.walk(OID_DESCR):
+            idx = int(str(vb.oid).split(".")[-1])
+            descr_map[idx] = str(vb.value)
+
+        async for vb in client.walk(OID_STATUS):
+            idx = int(str(vb.oid).split(".")[-1])
+            status_map[idx] = STATUS_MAP.get(int(vb.value), str(vb.value))
+
+        async for vb in client.walk(OID_SPEED):
+            idx = int(str(vb.oid).split(".")[-1])
+            try:
+                speed_mbps = int(vb.value) // 1_000_000
+            except Exception:
+                speed_mbps = 0
+            speed_map[idx] = speed_mbps
+
+        interfaces = []
+        for idx in sorted(descr_map):
+            interfaces.append({
+                "index":      idx,
+                "descr":      descr_map.get(idx, f"if{idx}"),
+                "status":     status_map.get(idx, "unknown"),
+                "speed_mbps": speed_map.get(idx, 0),
+            })
+        return interfaces
+
+    return asyncio.run(_walk())
+
+
 def send_email_with_config(subject, body, to_list):
     """
     Send email using the EmailConfig stored in the database.

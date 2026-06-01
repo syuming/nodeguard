@@ -472,6 +472,24 @@ def api_monitor_status(request):
     return JsonResponse({"monitoring": running, "interval": MONITOR_INTERVAL})
 
 
+@login_required
+@require_POST
+def api_snmp_scan(request, pk):
+    device = get_object_or_404(Device, pk=pk)
+    if not can_access_device(request.user, device):
+        raise Http404
+    import json
+    from monitor.utils import snmp_scan_interfaces
+    body = json.loads(request.body or b"{}")
+    community = body.get("community", "public")
+    port      = int(body.get("port", 161))
+    try:
+        interfaces = snmp_scan_interfaces(device.ip_address, community=community, port=port)
+        return JsonResponse({"ok": True, "interfaces": interfaces})
+    except Exception as e:
+        return JsonResponse({"ok": False, "error": str(e)}, status=400)
+
+
 # ── MonitorCheck CRUD ─────────────────────────────────────────────────────────
 
 @login_required

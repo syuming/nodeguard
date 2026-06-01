@@ -35,4 +35,5 @@ urlpatterns = [
     path("api/device/<int:pk>/logs/", views.api_device_logs, name="api_device_logs"),
     path("api/monitor/toggle/", views.api_monitor_toggle, name="api_monitor_toggle"),
     path("api/monitor/status/", views.api_monitor_status, name="api_monitor_status"),
+    path("api/device/<int:pk>/snmp-scan/", views.api_snmp_scan, name="api_snmp_scan"),
 ]

@@ -97,6 +97,8 @@
     html .nav-tabs .nav-link.active     { border-color: #334155 #334155 var(--bg-card) !important; }
     html[data-theme="light"] .nav-tabs .nav-link.active { border-color: #e2e8f0 #e2e8f0 var(--bg-card) !important; }
     .nav-tabs .nav-link:hover:not(.active) { color: var(--text-primary) !important; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .spin { display:inline-block; animation: spin 1s linear infinite; }
   </style>
 </head>
 <body>
