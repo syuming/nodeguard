@@ -264,15 +264,34 @@ def run_check(check):
         community = check.snmp_community or "public"
         port      = check.snmp_port or 161
         try:
-            data = _snmp_get(ip, community, [
-                "1.3.6.1.2.1.1.1.0",  # sysDescr
-                "1.3.6.1.2.1.1.3.0",  # sysUpTime
-                "1.3.6.1.2.1.1.5.0",  # sysName
-            ], port=port)
-            uptime_str = _format_uptime(data.get("1.3.6.1.2.1.1.3.0")) if data.get("1.3.6.1.2.1.1.3.0") else "-"
-            descr = str(data.get("1.3.6.1.2.1.1.1.0") or "")[:60]
-            msg = f"SNMP OK - Uptime: {uptime_str} | {descr}"
-            status = "online"
+            if check.snmp_oid:
+                # 監控特定 interface 的 ifOperStatus
+                data = _snmp_get(ip, community, [check.snmp_oid], port=port)
+                raw = data.get(check.snmp_oid)
+                val = raw.pythonize() if hasattr(raw, "pythonize") else int(raw) if raw is not None else None
+                # ifOperStatus: 1=up, 2=down, others=degraded
+                IF_STATUS = {1: "up", 2: "down", 3: "testing", 4: "unknown",
+                             5: "dormant", 6: "notPresent", 7: "lowerLayerDown"}
+                if_status = IF_STATUS.get(val, f"unknown({val})")
+                if val == 1:
+                    status = "online"
+                    msg = f"Interface {if_status} | OID: {check.snmp_oid}"
+                elif val == 2:
+                    status = "offline"
+                    msg = f"Interface {if_status} | OID: {check.snmp_oid}"
+                else:
+                    status = "warning"
+                    msg = f"Interface {if_status} | OID: {check.snmp_oid}"
+            else:
+                # 基本存活確認：sysUpTime + sysDescr
+                data = _snmp_get(ip, community, [
+                    "1.3.6.1.2.1.1.1.0",  # sysDescr
+                    "1.3.6.1.2.1.1.3.0",  # sysUpTime
+                ], port=port)
+                uptime_str = _format_uptime(data.get("1.3.6.1.2.1.1.3.0")) if data.get("1.3.6.1.2.1.1.3.0") else "-"
+                descr = str(data.get("1.3.6.1.2.1.1.1.0") or "")[:60]
+                msg = f"SNMP OK - Uptime: {uptime_str} | {descr}"
+                status = "online"
         except Exception as e:
             msg = f"SNMP 失敗: {e}"
             status = "offline"

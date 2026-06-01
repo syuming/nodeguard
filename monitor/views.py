@@ -486,16 +486,21 @@ def api_snmp_add_checks(request, pk):
     interval  = int(body.get("interval", 60))
     interfaces = body.get("interfaces", [])
     created = 0
+    OID_IF_OPER_STATUS = "1.3.6.1.2.1.2.2.1.8"
     for iface in interfaces:
+        idx = iface.get("index")
+        descr = iface.get("descr", f"if{idx}")
+        oid = f"{OID_IF_OPER_STATUS}.{idx}" if idx else ""
         MonitorCheck.objects.create(
             device=device,
             check_type="snmp",
             snmp_community=community,
             snmp_version=version,
             snmp_port=port,
+            snmp_oid=oid,
             interval=interval,
             enabled=True,
-            last_message=f"Interface: {iface.get('descr', '')}",
+            last_message=f"Interface: {descr}",
         )
         created += 1
     return JsonResponse({"ok": True, "created": created})
