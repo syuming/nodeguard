@@ -217,6 +217,10 @@
                     {% if c.enabled %}<i class="bi bi-pause-fill"></i>{% else %}<i class="bi bi-play-fill"></i>{% endif %}
                   </button>
                 </form>
+                <button class="btn btn-xs btn-outline-info" style="font-size:.72rem;padding:1px 6px" title="編輯"
+                        onclick="openEditCheck({{ c.pk }}, '{{ c.check_type }}', {{ c.port|default:'null' }}, '{{ c.ssh_username }}', '{{ c.url }}', {{ c.expected_status_code }}, '{{ c.snmp_community }}', {{ c.snmp_version }}, {{ c.snmp_port }}, {{ c.interval }})">
+                  <i class="bi bi-pencil"></i>
+                </button>
                 <form method="post" action="/checks/{{ c.pk }}/delete/" class="d-inline"
                       onsubmit="return confirm('確定刪除此監控項目？')">
                   {% csrf_token %}
@@ -305,6 +309,63 @@
   </div>
 
 </div><!-- end tab-content -->
+
+<!-- 編輯監控項目 Modal -->
+<div class="modal fade" id="editCheckModal" tabindex="-1">
+  <div class="modal-dialog">
+    <div class="modal-content" style="background:#1e293b;border:1px solid #334155">
+      <div class="modal-header" style="border-bottom:1px solid #334155">
+        <h5 class="modal-title"><i class="bi bi-pencil me-2"></i>編輯監控項目</h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+      </div>
+      <form id="edit-check-form">
+        <div class="modal-body">
+          <input type="hidden" id="edit-check-pk">
+          <div class="row g-2">
+            <div class="col-6">
+              <label class="form-label form-label-sm">監控類型</label>
+              <input type="text" id="edit-check-type" class="form-control form-control-sm" readonly style="background:#0f172a;color:#64748b">
+            </div>
+            <div class="col-6" id="edit-field-port">
+              <label class="form-label form-label-sm">Port</label>
+              <input type="number" id="edit-port" class="form-control form-control-sm">
+            </div>
+            <div class="col-6" id="edit-field-ssh-user">
+              <label class="form-label form-label-sm">SSH 帳號</label>
+              <input type="text" id="edit-ssh-username" class="form-control form-control-sm">
+            </div>
+            <div class="col-6" id="edit-field-url">
+              <label class="form-label form-label-sm">URL</label>
+              <input type="text" id="edit-url" class="form-control form-control-sm">
+            </div>
+            <div class="col-4" id="edit-field-http-code">
+              <label class="form-label form-label-sm">預期狀態碼</label>
+              <input type="number" id="edit-http-code" class="form-control form-control-sm">
+            </div>
+            <div class="col-4" id="edit-field-snmp-community">
+              <label class="form-label form-label-sm">Community</label>
+              <input type="text" id="edit-snmp-community" class="form-control form-control-sm">
+            </div>
+            <div class="col-4" id="edit-field-snmp-port">
+              <label class="form-label form-label-sm">SNMP Port</label>
+              <input type="number" id="edit-snmp-port" class="form-control form-control-sm">
+            </div>
+            <div class="col-6">
+              <label class="form-label form-label-sm">間隔（秒）</label>
+              <input type="number" id="edit-interval" class="form-control form-control-sm" min="1">
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer" style="border-top:1px solid #334155">
+          <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">取消</button>
+          <button type="button" class="btn btn-primary btn-sm" onclick="saveEditCheck()">
+            <i class="bi bi-check-lg me-1"></i>儲存
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
 
 <!-- SNMP 掃描 Modal -->
 <div class="modal fade" id="snmpScanModal" tabindex="-1">
@@ -437,6 +498,53 @@ function toggleCheckFields() {
 }
 toggleCheckFields();
 
+/* ── 編輯監控項目 ── */
+function openEditCheck(pk, type, port, sshUser, url, httpCode, snmpCommunity, snmpVersion, snmpPort, interval) {
+  document.getElementById("edit-check-pk").value    = pk;
+  document.getElementById("edit-check-type").value  = type;
+  document.getElementById("edit-port").value         = port || "";
+  document.getElementById("edit-ssh-username").value = sshUser || "";
+  document.getElementById("edit-url").value          = url || "";
+  document.getElementById("edit-http-code").value    = httpCode || 200;
+  document.getElementById("edit-snmp-community").value = snmpCommunity || "public";
+  document.getElementById("edit-snmp-port").value    = snmpPort || 161;
+  document.getElementById("edit-interval").value     = interval || 60;
+
+  const show = (id, cond) => document.getElementById(id).style.display = cond ? "" : "none";
+  show("edit-field-port",         type === "tcp" || type === "ssh");
+  show("edit-field-ssh-user",     type === "ssh");
+  show("edit-field-url",          type === "http");
+  show("edit-field-http-code",    type === "http");
+  show("edit-field-snmp-community", type === "snmp");
+  show("edit-field-snmp-port",    type === "snmp");
+
+  new bootstrap.Modal(document.getElementById("editCheckModal")).show();
+}
+
+function saveEditCheck() {
+  const pk = document.getElementById("edit-check-pk").value;
+  fetch(`/api/checks/${pk}/edit/`, {
+    method: "POST",
+    headers: {"X-CSRFToken": getCookie("csrftoken"), "Content-Type": "application/json"},
+    body: JSON.stringify({
+      port:                document.getElementById("edit-port").value || null,
+      ssh_username:        document.getElementById("edit-ssh-username").value,
+      url:                 document.getElementById("edit-url").value,
+      expected_status_code: document.getElementById("edit-http-code").value,
+      snmp_community:      document.getElementById("edit-snmp-community").value,
+      snmp_port:           document.getElementById("edit-snmp-port").value,
+      interval:            document.getElementById("edit-interval").value,
+    })
+  })
+  .then(r => r.json())
+  .then(data => {
+    if (data.ok) {
+      bootstrap.Modal.getInstance(document.getElementById("editCheckModal")).hide();
+      location.reload();
+    }
+  });
+}
+
 /* ── SNMP 掃描 ── */
 let _scannedInterfaces = [];
 
@@ -504,25 +612,23 @@ function addSelectedInterfaces() {
   if (!selected.length) { alert("請先選取要監控的 Interface"); return; }
   const community = document.getElementById("scan-community").value || "public";
   const port      = parseInt(document.getElementById("scan-port").value) || 161;
+  const interfaces = selected.map(cb => ({index: cb.dataset.index, descr: cb.dataset.descr}));
 
-  const promises = selected.map(cb => {
-    const formData = new FormData();
-    formData.append("csrfmiddlewaretoken", getCookie("csrftoken"));
-    formData.append("check_type", "snmp");
-    formData.append("snmp_community", community);
-    formData.append("snmp_version", "2");
-    formData.append("snmp_port", port);
-    formData.append("interval", "60");
-    formData.append("enabled", "true");
-    formData.append("snmp_interface_index", cb.dataset.index);
-    formData.append("snmp_interface_descr", cb.dataset.descr);
-    return fetch("/device/{{ device.id }}/checks/add/", {method:"POST", body: formData});
-  });
-
-  Promise.all(promises).then(() => {
-    bootstrap.Modal.getInstance(document.getElementById("snmpScanModal")).hide();
-    location.reload();
-  });
+  fetch("/api/device/{{ device.id }}/snmp-add-checks/", {
+    method: "POST",
+    headers: {"X-CSRFToken": getCookie("csrftoken"), "Content-Type": "application/json"},
+    body: JSON.stringify({community, port, version: 2, interval: 60, interfaces})
+  })
+  .then(r => r.json())
+  .then(data => {
+    if (data.ok) {
+      bootstrap.Modal.getInstance(document.getElementById("snmpScanModal")).hide();
+      location.reload();
+    } else {
+      alert("新增失敗：" + (data.error || "未知錯誤"));
+    }
+  })
+  .catch(e => alert("錯誤：" + e));
 }
 </script>
 {% endblock %}

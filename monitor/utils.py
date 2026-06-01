@@ -9,18 +9,24 @@ from django.utils import timezone
 
 def _snmp_get(ip, community, oids, port=161, timeout=3):
     """GET one or more OIDs via SNMP v2c. Returns dict {oid: value} or raises."""
+    import asyncio
     from functools import partial
     from puresnmp import Client, V2C
     from puresnmp.transport import send_udp
-    sender = partial(send_udp, timeout=timeout, retries=1)
-    client = Client(ip, V2C(community), port=port, sender=sender)
-    results = {}
-    for oid in oids:
-        try:
-            results[oid] = client.get(oid)
-        except Exception:
-            results[oid] = None
-    return results
+    from x690.types import ObjectIdentifier
+
+    async def _fetch():
+        sender = partial(send_udp, timeout=timeout, retries=1)
+        client = Client(ip, V2C(community), port=port, sender=sender)
+        results = {}
+        for oid in oids:
+            try:
+                results[oid] = await client.get(ObjectIdentifier(oid))
+            except Exception:
+                results[oid] = None
+        return results
+
+    return asyncio.run(_fetch())
 
 
 def _format_uptime(centiseconds):

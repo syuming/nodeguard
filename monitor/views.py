@@ -474,6 +474,35 @@ def api_monitor_status(request):
 
 @login_required
 @require_POST
+def api_snmp_add_checks(request, pk):
+    device = get_object_or_404(Device, pk=pk)
+    if not can_access_device(request.user, device):
+        raise Http404
+    import json
+    body = json.loads(request.body or b"{}")
+    community = body.get("community", "public")
+    port      = int(body.get("port", 161))
+    version   = int(body.get("version", 2))
+    interval  = int(body.get("interval", 60))
+    interfaces = body.get("interfaces", [])
+    created = 0
+    for iface in interfaces:
+        MonitorCheck.objects.create(
+            device=device,
+            check_type="snmp",
+            snmp_community=community,
+            snmp_version=version,
+            snmp_port=port,
+            interval=interval,
+            enabled=True,
+            last_message=f"Interface: {iface.get('descr', '')}",
+        )
+        created += 1
+    return JsonResponse({"ok": True, "created": created})
+
+
+@login_required
+@require_POST
 def api_snmp_scan(request, pk):
     device = get_object_or_404(Device, pk=pk)
     if not can_access_device(request.user, device):
@@ -530,6 +559,25 @@ def monitor_check_delete(request, check_pk):
     check.delete()
     messages.success(request, "監控項目已刪除")
     return redirect(f"/device/{device_pk}/")
+
+
+@login_required
+@require_POST
+def api_monitor_check_edit(request, check_pk):
+    import json
+    check = get_object_or_404(MonitorCheck, pk=check_pk)
+    if not can_access_device(request.user, check.device):
+        raise Http404
+    body = json.loads(request.body or b"{}")
+    check.port                = body.get("port") or None
+    check.ssh_username        = body.get("ssh_username", "")
+    check.url                 = body.get("url", "")
+    check.expected_status_code = int(body.get("expected_status_code") or 200)
+    check.snmp_community      = body.get("snmp_community", "public")
+    check.snmp_port           = int(body.get("snmp_port") or 161)
+    check.interval            = int(body.get("interval") or 60)
+    check.save()
+    return JsonResponse({"ok": True})
 
 
 @login_required
