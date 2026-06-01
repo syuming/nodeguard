@@ -202,13 +202,13 @@ def change_password(request):
 @login_required
 def dashboard(request):
     profile = get_profile(request.user)
-    devices = get_visible_devices(request.user).order_by("company__name", "name")
+    devices = get_visible_devices(request.user)
     total   = devices.count()
     online  = devices.filter(status="online").count()
     offline = devices.filter(status="offline").count()
     warning = devices.filter(status="warning").count()
+    alerts  = devices.filter(status__in=["offline", "warning"]).order_by("status", "company__name", "name")
 
-    # Admin sees per-company summary
     company_stats = []
     if profile.is_admin:
         for company in Company.objects.all().order_by("name"):
@@ -222,11 +222,11 @@ def dashboard(request):
             })
 
     return render(request, "monitor/dashboard.html", {
-        "devices": devices,
         "total": total,
         "online": online,
         "offline": offline,
         "warning": warning,
+        "alerts": alerts,
         "profile": profile,
         "company_stats": company_stats,
     })

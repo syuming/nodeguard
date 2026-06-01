@@ -74,9 +74,14 @@
 </div>
 {% endif %}
 
-<!-- 工具列 -->
+<!-- 需要注意的設備 -->
 <div class="d-flex justify-content-between align-items-center mb-3">
-  <h5 class="mb-0"><i class="bi bi-list-ul me-2"></i>設備列表</h5>
+  <h5 class="mb-0">
+    <i class="bi bi-exclamation-triangle me-2" style="color:#f59e0b"></i>需要注意的設備
+    {% if alerts %}
+    <span class="badge bg-danger ms-2">{{ alerts|length }}</span>
+    {% endif %}
+  </h5>
   <div class="d-flex gap-2">
     <button class="btn btn-sm btn-outline-info" onclick="checkAll()">
       <i class="bi bi-arrow-repeat me-1"></i>全部檢查
@@ -84,13 +89,9 @@
     <button id="monitor-toggle-btn" class="btn btn-sm btn-outline-secondary" onclick="toggleMonitor()">
       <i class="bi bi-play-circle me-1"></i>持續監控：關閉
     </button>
-    <a href="/device/add/" class="btn btn-sm btn-primary">
-      <i class="bi bi-plus me-1"></i>新增設備
-    </a>
   </div>
 </div>
 
-<!-- 設備表格 -->
 <div class="card">
   <div class="card-body p-0">
     <div class="table-responsive">
@@ -106,9 +107,9 @@
             <th>操作</th>
           </tr>
         </thead>
-        <tbody id="device-table-body">
-          {% for device in devices %}
-          <tr id="row-{{ device.id }}" class="{% if device.status == 'offline' %}row-offline{% elif device.status == 'warning' %}row-warning{% endif %}">
+        <tbody id="alert-table-body">
+          {% for device in alerts %}
+          <tr id="row-{{ device.id }}">
             <td>
               <span class="status-dot dot-{{ device.status }}"></span>
               <span class="badge badge-{{ device.status }} text-white">{{ device.get_status_display }}</span>
@@ -128,22 +129,15 @@
               <button class="btn btn-sm btn-outline-secondary" onclick="checkDevice({{ device.id }})" title="立即檢查">
                 <i class="bi bi-arrow-repeat"></i>
               </button>
-              <a href="/device/{{ device.id }}/edit/" class="btn btn-sm btn-outline-warning" title="編輯">
-                <i class="bi bi-pencil"></i>
+              <a href="/device/{{ device.id }}/" class="btn btn-sm btn-outline-info" title="查看詳情">
+                <i class="bi bi-eye"></i>
               </a>
-              <form method="post" action="/device/{{ device.id }}/delete/" class="d-inline"
-                    onsubmit="return confirm('確定刪除 {{ device.name }} ?')">
-                {% csrf_token %}
-                <button type="submit" class="btn btn-sm btn-outline-danger" title="刪除">
-                  <i class="bi bi-trash"></i>
-                </button>
-              </form>
             </td>
           </tr>
           {% empty %}
           <tr><td colspan="7" class="text-center text-muted py-5">
-            <i class="bi bi-inbox display-6 d-block mb-2"></i>
-            尚未新增任何設備，<a href="/device/add/">點此新增</a>
+            <i class="bi bi-check-circle display-6 d-block mb-2" style="color:#22c55e"></i>
+            所有設備運作正常
           </td></tr>
           {% endfor %}
         </tbody>
@@ -169,26 +163,31 @@ function pollStatus() {
   fetch("/api/status/")
     .then(r => r.json())
     .then(data => {
+      const tbody = document.getElementById("alert-table-body");
+      let hasAlerts = false;
       data.devices.forEach(d => {
         const row = document.getElementById("row-" + d.id);
-        if (!row) return;
-        const dot   = row.querySelector(".status-dot");
-        const badge = row.querySelector(".badge");
-        const ts    = row.querySelectorAll("td")[5];
-        if (dot)   dot.className = "status-dot dot-" + d.status;
-        if (badge) {
-          badge.className = "badge text-white badge-" + d.status;
-          badge.textContent = {online:"Online",offline:"Offline",warning:"Warning",unknown:"Unknown"}[d.status] || d.status;
+        if (d.status === "offline" || d.status === "warning") {
+          hasAlerts = true;
+          if (row) {
+            const dot   = row.querySelector(".status-dot");
+            const badge = row.querySelector(".badge");
+            const ts    = row.querySelectorAll("td")[5];
+            if (dot)   dot.className = "status-dot dot-" + d.status;
+            if (badge) {
+              badge.className = "badge text-white badge-" + d.status;
+              badge.textContent = {online:"Online",offline:"Offline",warning:"Warning",unknown:"Unknown"}[d.status] || d.status;
+            }
+            if (ts && d.last_checked) ts.textContent = d.last_checked;
+          }
+        } else if (row) {
+          row.remove();
         }
-        row.className = d.status === "offline" ? "row-offline" : d.status === "warning" ? "row-warning" : "";
-        row.id = "row-" + d.id;
-        if (ts && d.last_checked) ts.textContent = d.last_checked;
       });
     });
 }
 setInterval(pollStatus, 10000);
 
-// ── 持續監控切換 ──────────────────────────────────────────────────────────────
 function updateMonitorBtn(monitoring, interval) {
   const btn = document.getElementById("monitor-toggle-btn");
   if (monitoring) {
@@ -204,7 +203,6 @@ function toggleMonitor() {
     .then(r => r.json())
     .then(data => updateMonitorBtn(data.monitoring, data.interval));
 }
-// 頁面載入時同步按鈕狀態
 fetch("/api/monitor/status/")
   .then(r => r.json())
   .then(data => updateMonitorBtn(data.monitoring, data.interval));
