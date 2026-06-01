@@ -140,6 +140,21 @@
                 <label class="form-label form-label-sm">預期狀態碼</label>
                 <input type="number" name="expected_status_code" class="form-control form-control-sm" value="200">
               </div>
+              <div class="col-3" id="field-snmp-community" style="display:none">
+                <label class="form-label form-label-sm">Community String</label>
+                <input type="text" name="snmp_community" class="form-control form-control-sm" value="public">
+              </div>
+              <div class="col-2" id="field-snmp-version" style="display:none">
+                <label class="form-label form-label-sm">版本</label>
+                <select name="snmp_version" class="form-select form-select-sm">
+                  <option value="2">v2c</option>
+                  <option value="1">v1</option>
+                </select>
+              </div>
+              <div class="col-2" id="field-snmp-port" style="display:none">
+                <label class="form-label form-label-sm">SNMP Port</label>
+                <input type="number" name="snmp_port" class="form-control form-control-sm" value="161">
+              </div>
               <div class="col-2">
                 <label class="form-label form-label-sm">間隔（秒）</label>
                 <input type="number" name="interval" class="form-control form-control-sm" value="3" min="1">
@@ -179,6 +194,7 @@
                 {% elif c.check_type == "tcp" %}Port {{ c.port }}
                 {% elif c.check_type == "ssh" %}Port {{ c.port|default:22 }}{% if c.ssh_username %} / {{ c.ssh_username }}{% endif %}
                 {% elif c.check_type == "http" %}<span class="text-info">{{ c.url }}</span> [{{ c.expected_status_code }}]
+                {% elif c.check_type == "snmp" %}{{ c.snmp_community }} / v{{ c.snmp_version }}c / Port {{ c.snmp_port }}
                 {% endif %}
               </td>
               <td style="font-size:.82rem">{{ c.interval }}s</td>
@@ -352,11 +368,14 @@ refreshDeviceStatus();
 /* ── 新增監控欄位切換 ── */
 function toggleCheckFields() {
   const t = document.getElementById("id_check_type").value;
-  document.getElementById("field-port").style.display      = (t === "tcp" || t === "ssh") ? "" : "none";
-  document.getElementById("field-ssh-user").style.display  = (t === "ssh") ? "" : "none";
-  document.getElementById("field-ssh-pw").style.display    = (t === "ssh") ? "" : "none";
-  document.getElementById("field-url").style.display       = (t === "http") ? "" : "none";
-  document.getElementById("field-http-code").style.display = (t === "http") ? "" : "none";
+  document.getElementById("field-port").style.display           = (t === "tcp" || t === "ssh") ? "" : "none";
+  document.getElementById("field-ssh-user").style.display       = (t === "ssh") ? "" : "none";
+  document.getElementById("field-ssh-pw").style.display         = (t === "ssh") ? "" : "none";
+  document.getElementById("field-url").style.display            = (t === "http") ? "" : "none";
+  document.getElementById("field-http-code").style.display      = (t === "http") ? "" : "none";
+  document.getElementById("field-snmp-community").style.display = (t === "snmp") ? "" : "none";
+  document.getElementById("field-snmp-version").style.display   = (t === "snmp") ? "" : "none";
+  document.getElementById("field-snmp-port").style.display      = (t === "snmp") ? "" : "none";
 }
 toggleCheckFields();
 </script>

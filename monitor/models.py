@@ -118,6 +118,7 @@ class MonitorCheck(models.Model):
         ("tcp",  "TCP Port"),
         ("ssh",  "SSH"),
         ("http", "HTTP"),
+        ("snmp", "SNMP"),
     ]
 
     STATUS_CHOICES = [
@@ -137,6 +138,10 @@ class MonitorCheck(models.Model):
     # HTTP
     url                  = models.CharField(max_length=500, blank=True, verbose_name="URL")
     expected_status_code = models.IntegerField(default=200, verbose_name="預期 HTTP 狀態碼")
+    # SNMP
+    snmp_community = models.CharField(max_length=100, blank=True, default="public", verbose_name="Community String")
+    snmp_version   = models.IntegerField(default=2, verbose_name="SNMP 版本")
+    snmp_port      = models.IntegerField(default=161, verbose_name="SNMP Port")
     # Common
     interval = models.IntegerField(default=60, verbose_name="檢查間隔（秒）")
     enabled  = models.BooleanField(default=True, verbose_name="啟用")

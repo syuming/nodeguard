@@ -7,6 +7,37 @@ from email.header import Header
 from django.utils import timezone
 
 
+def _snmp_get(ip, community, oids, port=161, timeout=3):
+    """GET one or more OIDs via SNMP v2c. Returns dict {oid: value} or raises."""
+    from puresnmp import Client, V2C
+    client = Client(ip, V2C(community), port=port, timeout=timeout)
+    results = {}
+    for oid in oids:
+        try:
+            results[oid] = client.get(oid)
+        except Exception:
+            results[oid] = None
+    return results
+
+
+def _format_uptime(centiseconds):
+    """Convert SNMP sysUpTime (centiseconds) to human-readable string."""
+    try:
+        secs = int(centiseconds) // 100
+        days, rem = divmod(secs, 86400)
+        hours, rem = divmod(rem, 3600)
+        minutes = rem // 60
+        parts = []
+        if days:
+            parts.append(f"{days}d")
+        if hours:
+            parts.append(f"{hours}h")
+        parts.append(f"{minutes}m")
+        return " ".join(parts)
+    except Exception:
+        return str(centiseconds)
+
+
 def send_email_with_config(subject, body, to_list):
     """
     Send email using the EmailConfig stored in the database.
@@ -163,6 +194,23 @@ def run_check(check):
                 status = "warning"
         except Exception as e:
             msg = f"HTTP 失敗: {e}"
+            status = "offline"
+
+    elif check.check_type == "snmp":
+        community = check.snmp_community or "public"
+        port      = check.snmp_port or 161
+        try:
+            data = _snmp_get(ip, community, [
+                "1.3.6.1.2.1.1.1.0",  # sysDescr
+                "1.3.6.1.2.1.1.3.0",  # sysUpTime
+                "1.3.6.1.2.1.1.5.0",  # sysName
+            ], port=port)
+            uptime_str = _format_uptime(data.get("1.3.6.1.2.1.1.3.0")) if data.get("1.3.6.1.2.1.1.3.0") else "-"
+            descr = str(data.get("1.3.6.1.2.1.1.1.0") or "")[:60]
+            msg = f"SNMP OK - Uptime: {uptime_str} | {descr}"
+            status = "online"
+        except Exception as e:
+            msg = f"SNMP 失敗: {e}"
             status = "offline"
 
     else:

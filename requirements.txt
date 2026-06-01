@@ -3,3 +3,4 @@ netmiko>=4.3
 gunicorn>=21.2
 python-dotenv>=1.0
 whitenoise>=6.0
+puresnmp>=2.0

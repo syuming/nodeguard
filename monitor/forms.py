@@ -74,6 +74,7 @@ class MonitorCheckForm(forms.ModelForm):
             "check_type", "port",
             "ssh_username", "ssh_password",
             "url", "expected_status_code",
+            "snmp_community", "snmp_version", "snmp_port",
             "interval", "enabled",
         ]
         widgets = {
@@ -86,15 +87,19 @@ class MonitorCheckForm(forms.ModelForm):
             "ssh_password":         "SSH 密碼",
             "url":                  "URL",
             "expected_status_code": "預期 HTTP 狀態碼",
+            "snmp_community":       "Community String",
+            "snmp_version":         "SNMP 版本",
+            "snmp_port":            "SNMP Port",
             "interval":             "檢查間隔（秒）",
             "enabled":              "啟用",
         }
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        # Make most fields not required at model level; validation handled in clean()
-        for f in ("port", "ssh_username", "ssh_password", "url"):
+        for f in ("port", "ssh_username", "ssh_password", "url",
+                  "snmp_community", "snmp_version", "snmp_port"):
             self.fields[f].required = False
+        self.fields["snmp_version"].widget = forms.Select(choices=[(1, "v1"), (2, "v2c")])
 
     def clean(self):
         cleaned = super().clean()
