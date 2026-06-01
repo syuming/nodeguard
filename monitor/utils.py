@@ -9,8 +9,11 @@ from django.utils import timezone
 
 def _snmp_get(ip, community, oids, port=161, timeout=3):
     """GET one or more OIDs via SNMP v2c. Returns dict {oid: value} or raises."""
+    from functools import partial
     from puresnmp import Client, V2C
-    client = Client(ip, V2C(community), port=port, timeout=timeout)
+    from puresnmp.transport import send_udp
+    sender = partial(send_udp, timeout=timeout, retries=1)
+    client = Client(ip, V2C(community), port=port, sender=sender)
     results = {}
     for oid in oids:
         try:
