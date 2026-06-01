@@ -551,7 +551,7 @@ def monitor_check_add(request, device_pk):
         for field_errors in form.errors.values():
             for e in field_errors:
                 messages.error(request, e)
-    return redirect(f"/device/{device_pk}/")
+    return redirect(f"/device/{device_pk}/?tab=monitors")
 
 
 @login_required
@@ -563,7 +563,7 @@ def monitor_check_delete(request, check_pk):
     device_pk = check.device_id
     check.delete()
     messages.success(request, "監控項目已刪除")
-    return redirect(f"/device/{device_pk}/")
+    return redirect(f"/device/{device_pk}/?tab=monitors")
 
 
 @login_required
@@ -593,7 +593,7 @@ def monitor_check_toggle(request, check_pk):
         raise Http404
     check.enabled = not check.enabled
     check.save(update_fields=["enabled"])
-    return JsonResponse({"enabled": check.enabled})
+    return redirect(f"/device/{check.device_id}/?tab=monitors")
 
 
 # ── Email 設定（僅系統管理者） ─────────────────────────────────────────────────

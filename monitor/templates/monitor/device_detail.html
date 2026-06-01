@@ -427,6 +427,24 @@
 
 {% block scripts %}
 <script>
+/* ── 頁面載入時切換 Tab ── */
+(function() {
+  const TAB_MAP = {
+    monitors: "tab-monitors",
+    downtime:  "tab-downtime",
+    log:       "tab-log",
+    info:      "tab-info",
+  };
+  const param = new URLSearchParams(window.location.search).get("tab");
+  const tabId = TAB_MAP[param];
+  if (tabId) {
+    document.addEventListener("DOMContentLoaded", () => {
+      const el = document.getElementById(tabId);
+      if (el) el.click();
+    });
+  }
+})();
+
 /* ── CSRF helper ── */
 function getCookie(name) {
   const v = document.cookie.match('(^|;) ?' + name + '=([^;]*)(;|$)');
@@ -542,7 +560,7 @@ function saveEditCheck() {
   .then(data => {
     if (data.ok) {
       bootstrap.Modal.getInstance(document.getElementById("editCheckModal")).hide();
-      location.reload();
+      location.href = location.pathname + "?tab=monitors";
     }
   });
 }
@@ -625,7 +643,7 @@ function addSelectedInterfaces() {
   .then(data => {
     if (data.ok) {
       bootstrap.Modal.getInstance(document.getElementById("snmpScanModal")).hide();
-      location.reload();
+      location.href = location.pathname + "?tab=monitors";
     } else {
       alert("新增失敗：" + (data.error || "未知錯誤"));
     }
