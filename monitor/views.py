@@ -130,10 +130,10 @@ def user_add(request):
             company_name = d["company"].name if d["company"] else "（未指定）"
             try:
                 send_email_with_config(
-                    subject="【NetMonitor】您的帳號已建立",
+                    subject="【NodeGuard】您的帳號已建立",
                     body=(
                         f"您好，\n\n"
-                        f"您的 NetMonitor 帳號已建立，以下是登入資訊：\n\n"
+                        f"您的 NodeGuard 帳號已建立，以下是登入資訊：\n\n"
                         f"  帳號：{d['username']}\n"
                         f"  密碼：{d['password1']}\n"
                         f"  所屬公司：{company_name}\n\n"
@@ -564,8 +564,8 @@ def email_test(request):
         return redirect("/settings/email/")
     try:
         send_email_with_config(
-            subject="【NetMonitor】測試郵件",
-            body="這是一封來自 NetMonitor 的測試郵件，如果您收到此郵件，代表 Email 設定正確。",
+            subject="【NodeGuard】測試郵件",
+            body="這是一封來自 NodeGuard 的測試郵件，如果您收到此郵件，代表 Email 設定正確。",
             to_list=[to],
         )
         messages.success(request, f"測試郵件已寄送至 {to}")

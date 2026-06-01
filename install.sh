@@ -1,12 +1,12 @@
 #!/usr/bin/env bash
 # =============================================================================
-#  NetMonitor 一鍵安裝腳本
+#  NodeGuard 一鍵安裝腳本
 #
 #  一行安裝（需 SSH key 已設定）：
-#    bash <(curl -fsSL https://raw.githubusercontent.com/syuming/monitor/main/install.sh)
+#    bash <(curl -fsSL https://raw.githubusercontent.com/syuming/nodeguard/main/install.sh)
 #
 #  或先 clone 再安裝：
-#    git clone git@github.com:syuming/monitor ~/netmonitor && bash ~/netmonitor/install.sh
+#    git clone git@github.com:syuming/nodeguard ~/nodeguard && bash ~/nodeguard/install.sh
 # =============================================================================
 
 set -euo pipefail
@@ -19,15 +19,15 @@ success() { echo -e "${GREEN}[OK]${RESET}    $*"; }
 warn()    { echo -e "${YELLOW}[WARN]${RESET}  $*"; }
 error()   { echo -e "${RED}[ERROR]${RESET} $*"; exit 1; }
 
-APP_DIR="${HOME}/netmonitor"
-REPO_SSH="git@github.com:syuming/monitor.git"
+APP_DIR="${HOME}/nodeguard"
+REPO_SSH="git@github.com:syuming/nodeguard.git"
 APP_PORT="8000"
 ADMIN_USER="admin"
 ADMIN_PASS="Netmon@2026"
 
 echo ""
 echo -e "${BOLD}╔══════════════════════════════════════╗${RESET}"
-echo -e "${BOLD}║       NetMonitor 一鍵安裝程式        ║${RESET}"
+echo -e "${BOLD}║       NodeGuard 一鍵安裝程式        ║${RESET}"
 echo -e "${BOLD}╚══════════════════════════════════════╝${RESET}"
 echo ""
 
@@ -43,7 +43,7 @@ success "系統環境正常（$(python3 --version)）"
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]:-}")" 2>/dev/null && pwd || true)"
 REPO_ORIGIN="$(git -C "${SCRIPT_DIR}" remote get-url origin 2>/dev/null || true)"
 
-if [[ "$REPO_ORIGIN" == *"syuming/monitor"* ]]; then
+if [[ "$REPO_ORIGIN" == *"syuming/nodeguard"* ]]; then
     APP_DIR="$SCRIPT_DIR"
     info "使用現有目錄：${APP_DIR}"
     git -C "$APP_DIR" pull --quiet && success "程式碼已更新" || warn "git pull 失敗，使用現有版本"
@@ -109,7 +109,7 @@ success "管理員帳號設定完成"
 deactivate
 
 # ── 9. 啟動服務 ───────────────────────────────────────────────────────────────
-info "啟動 NetMonitor..."
+info "啟動 NodeGuard..."
 bash "${APP_DIR}/start.sh"
 
 # ── 10. 完成提示 ──────────────────────────────────────────────────────────────
@@ -124,10 +124,10 @@ echo -e "${GREEN}${BOLD}║${RESET}  帳號：    ${YELLOW}${ADMIN_USER}${RESET}
 echo -e "${GREEN}${BOLD}║${RESET}  密碼：    ${YELLOW}${ADMIN_PASS}${RESET}"
 echo -e "${GREEN}${BOLD}║${RESET}"
 echo -e "${GREEN}${BOLD}║${RESET}  ${BOLD}常用指令：${RESET}"
-echo -e "${GREEN}${BOLD}║${RESET}  啟動：  ${CYAN}bash ~/netmonitor/start.sh${RESET}"
-echo -e "${GREEN}${BOLD}║${RESET}  停止：  ${CYAN}bash ~/netmonitor/stop.sh${RESET}"
-echo -e "${GREEN}${BOLD}║${RESET}  狀態：  ${CYAN}bash ~/netmonitor/status.sh${RESET}"
-echo -e "${GREEN}${BOLD}║${RESET}  更新：  ${CYAN}bash ~/netmonitor/update.sh${RESET}"
+echo -e "${GREEN}${BOLD}║${RESET}  啟動：  ${CYAN}bash ~/nodeguard/start.sh${RESET}"
+echo -e "${GREEN}${BOLD}║${RESET}  停止：  ${CYAN}bash ~/nodeguard/stop.sh${RESET}"
+echo -e "${GREEN}${BOLD}║${RESET}  狀態：  ${CYAN}bash ~/nodeguard/status.sh${RESET}"
+echo -e "${GREEN}${BOLD}║${RESET}  更新：  ${CYAN}bash ~/nodeguard/update.sh${RESET}"
 echo -e "${GREEN}${BOLD}║${RESET}"
 echo -e "${GREEN}${BOLD}║${RESET}  ${YELLOW}⚠ 請登入後立即至「個人資料」修改密碼！${RESET}"
 echo -e "${GREEN}${BOLD}╚══════════════════════════════════════════════╝${RESET}"

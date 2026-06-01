@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # =============================================================================
-#  NetMonitor 一鍵移除腳本（完全刪除，資料不保留，不需要 sudo）
-#  用法：bash ~/netmonitor/uninstall.sh
+#  NodeGuard 一鍵移除腳本（完全刪除，資料不保留，不需要 sudo）
+#  用法：bash ~/nodeguard/uninstall.sh
 # =============================================================================
 
 set -euo pipefail
@@ -9,11 +9,11 @@ set -euo pipefail
 RED='\033[0;31m'; GREEN='\033[0;32m'; YELLOW='\033[1;33m'
 BOLD='\033[1m'; RESET='\033[0m'
 
-APP_DIR="${HOME}/netmonitor"
+APP_DIR="${HOME}/nodeguard"
 
 echo ""
 echo -e "${RED}${BOLD}╔══════════════════════════════════════╗${RESET}"
-echo -e "${RED}${BOLD}║     NetMonitor 完全移除程式          ║${RESET}"
+echo -e "${RED}${BOLD}║     NodeGuard 完全移除程式           ║${RESET}"
 echo -e "${RED}${BOLD}╚══════════════════════════════════════╝${RESET}"
 echo ""
 echo -e "${YELLOW}⚠  警告：將刪除 ${APP_DIR} 的所有資料（資料庫、Log），且無法復原！${RESET}"
@@ -40,6 +40,6 @@ fi
 
 echo ""
 echo -e "${GREEN}${BOLD}╔══════════════════════════════════════╗${RESET}"
-echo -e "${GREEN}${BOLD}║       NetMonitor 已完全移除          ║${RESET}"
+echo -e "${GREEN}${BOLD}║       NodeGuard 已完全移除           ║${RESET}"
 echo -e "${GREEN}${BOLD}╚══════════════════════════════════════╝${RESET}"
 echo ""

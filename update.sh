@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # =============================================================================
-#  NetMonitor 一鍵更新腳本（不需要 sudo）
-#  用法：bash ~/netmonitor/update.sh
+#  NodeGuard 一鍵更新腳本（不需要 sudo）
+#  用法：bash ~/nodeguard/update.sh
 # =============================================================================
 
 set -euo pipefail
@@ -13,13 +13,13 @@ info()    { echo -e "${CYAN}[INFO]${RESET}  $*"; }
 success() { echo -e "${GREEN}[OK]${RESET}    $*"; }
 error()   { echo -e "${RED}[ERROR]${RESET} $*"; exit 1; }
 
-APP_DIR="${HOME}/netmonitor"
+APP_DIR="${HOME}/nodeguard"
 
 [[ ! -d "$APP_DIR/.git" ]] && error "找不到 ${APP_DIR}，請先執行安裝腳本"
 
 echo ""
 echo -e "${BOLD}╔══════════════════════════════════════╗${RESET}"
-echo -e "${BOLD}║       NetMonitor 更新程式            ║${RESET}"
+echo -e "${BOLD}║       NodeGuard 更新程式             ║${RESET}"
 echo -e "${BOLD}╚══════════════════════════════════════╝${RESET}"
 echo ""
 
@@ -41,7 +41,7 @@ python manage.py migrate --run-syncdb 2>&1 | grep -E "(OK|Apply|No migration)" |
 success "資料庫已更新"
 
 info "更新靜態檔案..."
-python manage.py collectstatic --noinput --quiet 2>/dev/null || true
+python manage.py collectstatic --noinput
 success "靜態檔案已更新"
 
 deactivate

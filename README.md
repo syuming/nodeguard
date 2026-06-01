@@ -1,4 +1,4 @@
-# NetMonitor - 網路設備監控系統
+# NodeGuard - 網路設備監控系統
 
 基於 Django 開發的網路設備監控平台，支援 Cisco、Juniper、Linux 設備的 Ping / TCP / SSH / HTTP 狀態監控，並提供多公司權限管理。
 
@@ -8,34 +8,23 @@
 
 - Python 3.10+
 - git
-- curl
 
 ---
 
 ## ⚡ 一鍵安裝
 
-適用 Ubuntu 20.04 / 22.04 / 24.04，**不需要 sudo**，安裝至 `~/netmonitor`。
+適用 Ubuntu 20.04 / 22.04 / 24.04，**不需要 sudo**，安裝至 `~/nodeguard`。
 
 **前置需求（若尚未安裝）：**
 
 ```bash
-sudo apt-get install -y python3 python3-venv git curl
+sudo apt-get install -y python3 python3-venv git
 ```
 
-**步驟 1：取得 GitHub Token**
-
-前往 GitHub → Settings → Developer settings → Personal access tokens → Tokens (classic)，建立時勾選 `repo` 權限。
+**執行安裝：**
 
 ```bash
-export GH_TOKEN="ghp_你的Token"
-```
-
-**步驟 2：執行安裝**
-
-```bash
-curl -fsSL -H "Authorization: token $GH_TOKEN" \
-  https://raw.githubusercontent.com/syuming/monitor/main/install.sh \
-  | GH_TOKEN=$GH_TOKEN bash
+bash <(curl -fsSL https://raw.githubusercontent.com/syuming/nodeguard/main/install.sh)
 ```
 
 安裝完成後會顯示連線資訊：
@@ -57,11 +46,11 @@ curl -fsSL -H "Authorization: token $GH_TOKEN" \
 
 | 動作 | 指令 |
 |------|------|
-| 啟動 | `bash ~/netmonitor/start.sh` |
-| 停止 | `bash ~/netmonitor/stop.sh` |
-| 狀態 | `bash ~/netmonitor/status.sh` |
-| 更新 | `bash ~/netmonitor/update.sh` |
-| 移除 | `bash ~/netmonitor/uninstall.sh` |
+| 啟動 | `bash ~/nodeguard/start.sh` |
+| 停止 | `bash ~/nodeguard/stop.sh` |
+| 狀態 | `bash ~/nodeguard/status.sh` |
+| 更新 | `bash ~/nodeguard/update.sh` |
+| 移除 | `bash ~/nodeguard/uninstall.sh` |
 
 ---
 
@@ -101,7 +90,7 @@ curl -fsSL -H "Authorization: token $GH_TOKEN" \
 ## 專案結構
 
 ```
-netmonitor/          # Django 設定、wsgi
+nodeguard/           # Django 設定、wsgi
 monitor/
   models.py          # Company、Device、MonitorCheck、DeviceLog、DowntimeRecord
   views.py           # Dashboard、設備管理、使用者管理、API

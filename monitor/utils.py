@@ -152,7 +152,7 @@ def run_check(check):
         url = check.url or f"http://{ip}/"
         expected = check.expected_status_code or 200
         try:
-            req = urllib.request.Request(url, headers={"User-Agent": "NetMonitor/1.0"})
+            req = urllib.request.Request(url, headers={"User-Agent": "NodeGuard/1.0"})
             with urllib.request.urlopen(req, timeout=10) as resp:
                 code = resp.status
             if code == expected:
