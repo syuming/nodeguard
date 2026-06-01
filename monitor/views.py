@@ -124,7 +124,7 @@ def user_add(request):
             last_name=d["last_name"],
             email=d["email"],
         )
-        UserProfile.objects.filter(user=user).update(role=d["role"], company=d["company"])
+        UserProfile.objects.update_or_create(user=user, defaults={"role": d["role"], "company": d["company"]})
 
         if "send_email" in request.POST and d["email"]:
             company_name = d["company"].name if d["company"] else "（未指定）"
