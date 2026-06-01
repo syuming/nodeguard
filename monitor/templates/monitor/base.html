@@ -115,6 +115,8 @@
         <li class="nav-item"><a class="nav-link" href="/company/"><i class="bi bi-building me-1"></i>公司管理</a></li>
         <li class="nav-item"><a class="nav-link" href="/users/"><i class="bi bi-people me-1"></i>使用者管理</a></li>
         <li class="nav-item"><a class="nav-link" href="/settings/email/"><i class="bi bi-envelope-gear me-1"></i>Email 設定</a></li>
+        {% elif user.is_authenticated and user.profile.company %}
+        <li class="nav-item"><a class="nav-link" href="/company/{{ user.profile.company.id }}/"><i class="bi bi-list-ul me-1"></i>設備列表</a></li>
         {% endif %}
       </ul>
       <ul class="navbar-nav">
