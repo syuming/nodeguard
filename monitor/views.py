@@ -581,6 +581,10 @@ def api_monitor_check_edit(request, check_pk):
     check.snmp_community      = body.get("snmp_community", "public")
     check.snmp_port           = int(body.get("snmp_port") or 161)
     check.interval            = int(body.get("interval") or 60)
+    if "snmp_label" in body:
+        check.snmp_label = body["snmp_label"]
+    if "snmp_oid" in body:
+        check.snmp_oid = body["snmp_oid"]
     check.save()
     return JsonResponse({"ok": True})
 

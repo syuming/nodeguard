@@ -221,7 +221,7 @@
                   </button>
                 </form>
                 <button class="btn btn-xs btn-outline-info" style="font-size:.72rem;padding:1px 6px" title="編輯"
-                        onclick="openEditCheck({{ c.pk }}, '{{ c.check_type }}', {{ c.port|default:'null' }}, '{{ c.ssh_username }}', '{{ c.url }}', {{ c.expected_status_code }}, '{{ c.snmp_community }}', {{ c.snmp_version }}, {{ c.snmp_port }}, {{ c.interval }})">
+                        onclick="openEditCheck({{ c.pk }}, '{{ c.check_type }}', {{ c.port|default:'null' }}, '{{ c.ssh_username }}', '{{ c.url }}', {{ c.expected_status_code }}, '{{ c.snmp_community }}', {{ c.snmp_version }}, {{ c.snmp_port }}, {{ c.interval }}, '{{ c.snmp_label|escapejs }}', '{{ c.snmp_oid|escapejs }}')">
                   <i class="bi bi-pencil"></i>
                 </button>
                 <form method="post" action="/checks/{{ c.pk }}/delete/" class="d-inline"
@@ -352,6 +352,14 @@
             <div class="col-4" id="edit-field-snmp-port">
               <label class="form-label form-label-sm">SNMP Port</label>
               <input type="number" id="edit-snmp-port" class="form-control form-control-sm">
+            </div>
+            <div class="col-6" id="edit-field-snmp-label">
+              <label class="form-label form-label-sm">Interface 名稱</label>
+              <input type="text" id="edit-snmp-label" class="form-control form-control-sm" placeholder="例：GigEth0/0">
+            </div>
+            <div class="col-6" id="edit-field-snmp-oid">
+              <label class="form-label form-label-sm">OID</label>
+              <input type="text" id="edit-snmp-oid" class="form-control form-control-sm" placeholder="1.3.6.1.2.1.2.2.1.8.x">
             </div>
             <div class="col-6">
               <label class="form-label form-label-sm">間隔（秒）</label>
@@ -520,7 +528,7 @@ function toggleCheckFields() {
 toggleCheckFields();
 
 /* ── 編輯監控項目 ── */
-function openEditCheck(pk, type, port, sshUser, url, httpCode, snmpCommunity, snmpVersion, snmpPort, interval) {
+function openEditCheck(pk, type, port, sshUser, url, httpCode, snmpCommunity, snmpVersion, snmpPort, interval, snmpLabel, snmpOid) {
   document.getElementById("edit-check-pk").value    = pk;
   document.getElementById("edit-check-type").value  = type;
   document.getElementById("edit-port").value         = port || "";
@@ -530,6 +538,8 @@ function openEditCheck(pk, type, port, sshUser, url, httpCode, snmpCommunity, sn
   document.getElementById("edit-snmp-community").value = snmpCommunity || "public";
   document.getElementById("edit-snmp-port").value    = snmpPort || 161;
   document.getElementById("edit-interval").value     = interval || 60;
+  document.getElementById("edit-snmp-label").value   = snmpLabel || "";
+  document.getElementById("edit-snmp-oid").value     = snmpOid || "";
 
   const show = (id, cond) => document.getElementById(id).style.display = cond ? "" : "none";
   show("edit-field-port",         type === "tcp" || type === "ssh");
@@ -538,6 +548,8 @@ function openEditCheck(pk, type, port, sshUser, url, httpCode, snmpCommunity, sn
   show("edit-field-http-code",    type === "http");
   show("edit-field-snmp-community", type === "snmp");
   show("edit-field-snmp-port",    type === "snmp");
+  show("edit-field-snmp-label",   type === "snmp");
+  show("edit-field-snmp-oid",     type === "snmp");
 
   new bootstrap.Modal(document.getElementById("editCheckModal")).show();
 }
@@ -555,6 +567,8 @@ function saveEditCheck() {
       snmp_community:      document.getElementById("edit-snmp-community").value,
       snmp_port:           document.getElementById("edit-snmp-port").value,
       interval:            document.getElementById("edit-interval").value,
+      snmp_label:          document.getElementById("edit-snmp-label").value,
+      snmp_oid:            document.getElementById("edit-snmp-oid").value,
     })
   })
   .then(r => r.json())
