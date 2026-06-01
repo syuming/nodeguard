@@ -61,7 +61,7 @@
             <select name="company" class="form-select">
               <option value="">（無）</option>
               {% for c in meta_form.company.field.queryset %}
-              <option value="{{ c.pk }}" {% if meta_form.company.value == c.pk|stringformat:"s" %}selected{% endif %}>{{ c.name }}</option>
+              <option value="{{ c.pk }}" {% if meta_form.company.value|stringformat:"s" == c.pk|stringformat:"s" %}selected{% endif %}>{{ c.name }}</option>
               {% endfor %}
             </select>
           </div>
