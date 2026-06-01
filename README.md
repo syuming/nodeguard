@@ -35,7 +35,7 @@ bash <(curl -fsSL https://raw.githubusercontent.com/syuming/nodeguard/main/insta
 ╠══════════════════════════════════════════════╣
 ║  網址：    http://<伺服器IP>:8000
 ║  帳號：    admin
-║  密碼：    Netmon@2026
+║  密碼：    NodeGuard@2026
 ║  ⚠ 請登入後立即至「個人資料」修改密碼！
 ╚══════════════════════════════════════════════╝
 ```
