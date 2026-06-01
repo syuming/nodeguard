@@ -188,6 +188,7 @@ class DowntimeRecord(models.Model):
     started_at   = models.DateTimeField(verbose_name="斷線時間")
     recovered_at = models.DateTimeField(null=True, blank=True, verbose_name="恢復時間")
     duration_seconds = models.IntegerField(null=True, blank=True, verbose_name="持續秒數")
+    reason       = models.TextField(blank=True, verbose_name="斷線原因")
 
     class Meta:
         verbose_name = "斷線記錄"

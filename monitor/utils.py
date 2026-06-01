@@ -332,6 +332,7 @@ def check_device(device):
         return device.status
 
     worst_status = "online"
+    failed_reasons = []
     for check in checks:
         prev_check_status = check.last_status
         status, msg = run_check(check)
@@ -346,12 +347,17 @@ def check_device(device):
             )
         if _SEVERITY.get(status, -1) > _SEVERITY.get(worst_status, -1):
             worst_status = status
+        if status == "offline":
+            snmp_label = getattr(check, "snmp_label", "")
+            display = f"{label}({snmp_label})" if snmp_label else label
+            failed_reasons.append(display)
 
     new_status = worst_status
 
     # ── 斷線記錄追蹤 ────────────────────────────────────────────────────────
     if new_status == "offline" and prev_status != "offline":
-        DowntimeRecord.objects.create(device=device, started_at=now)
+        reason = "、".join(failed_reasons) if failed_reasons else ""
+        DowntimeRecord.objects.create(device=device, started_at=now, reason=reason)
     elif new_status != "offline" and prev_status == "offline":
         open_record = DowntimeRecord.objects.filter(
             device=device, recovered_at__isnull=True

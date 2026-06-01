@@ -256,6 +256,7 @@
               <th>斷線時間</th>
               <th>恢復時間</th>
               <th>持續時間</th>
+              <th>原因</th>
               <th>狀態</th>
             </tr>
           </thead>
@@ -267,6 +268,13 @@
                 {% if dt.recovered_at %}{{ dt.recovered_at|date:"Y-m-d H:i:s" }}{% else %}<span class="text-danger">尚未恢復</span>{% endif %}
               </td>
               <td style="font-size:.85rem">{{ dt.duration_display }}</td>
+              <td style="font-size:.85rem">
+                {% if dt.reason %}
+                  <span style="color:#f87171">{{ dt.reason }}</span>
+                {% else %}
+                  <span class="text-muted">—</span>
+                {% endif %}
+              </td>
               <td>
                 {% if dt.recovered_at %}
                   <span class="badge" style="background:#22c55e">已恢復</span>
@@ -276,7 +284,7 @@
               </td>
             </tr>
             {% empty %}
-            <tr><td colspan="4" class="text-center text-muted py-3">尚無斷線記錄</td></tr>
+            <tr><td colspan="5" class="text-center text-muted py-3">尚無斷線記錄</td></tr>
             {% endfor %}
           </tbody>
         </table>
