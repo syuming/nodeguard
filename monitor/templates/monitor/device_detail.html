@@ -198,8 +198,9 @@
                 {% elif c.check_type == "ssh" %}Port {{ c.port|default:22 }}{% if c.ssh_username %} / {{ c.ssh_username }}{% endif %}
                 {% elif c.check_type == "http" %}<span class="text-info">{{ c.url }}</span> [{{ c.expected_status_code }}]
                 {% elif c.check_type == "snmp" %}
+                  {% if c.snmp_label %}<span style="color:#38bdf8">{{ c.snmp_label }}</span> — {% endif %}
                   {{ c.snmp_community }} / v{{ c.snmp_version }}c / Port {{ c.snmp_port }}
-                  {% if c.snmp_oid %}<br><span style="color:#64748b;font-size:.75rem">{{ c.snmp_oid }}</span>{% endif %}
+                  {% if c.snmp_oid %}<br><span style="color:#475569;font-size:.72rem">{{ c.snmp_oid }}</span>{% endif %}
                 {% endif %}
               </td>
               <td style="font-size:.82rem">{{ c.interval }}s</td>

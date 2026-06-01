@@ -498,9 +498,9 @@ def api_snmp_add_checks(request, pk):
             snmp_version=version,
             snmp_port=port,
             snmp_oid=oid,
+            snmp_label=descr,
             interval=interval,
             enabled=True,
-            last_message=f"Interface: {descr}",
         )
         created += 1
     return JsonResponse({"ok": True, "created": created})

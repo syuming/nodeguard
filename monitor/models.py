@@ -143,6 +143,7 @@ class MonitorCheck(models.Model):
     snmp_version   = models.IntegerField(default=2, verbose_name="SNMP 版本")
     snmp_port      = models.IntegerField(default=161, verbose_name="SNMP Port")
     snmp_oid       = models.CharField(max_length=200, blank=True, verbose_name="監控 OID")
+    snmp_label     = models.CharField(max_length=200, blank=True, verbose_name="Interface 名稱")
     # Common
     interval = models.IntegerField(default=60, verbose_name="檢查間隔（秒）")
     enabled  = models.BooleanField(default=True, verbose_name="啟用")

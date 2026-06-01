@@ -273,15 +273,16 @@ def run_check(check):
                 IF_STATUS = {1: "up", 2: "down", 3: "testing", 4: "unknown",
                              5: "dormant", 6: "notPresent", 7: "lowerLayerDown"}
                 if_status = IF_STATUS.get(val, f"unknown({val})")
+                label = check.snmp_label or check.snmp_oid
                 if val == 1:
                     status = "online"
-                    msg = f"Interface {if_status} | OID: {check.snmp_oid}"
+                    msg = f"[{label}] Interface up"
                 elif val == 2:
                     status = "offline"
-                    msg = f"Interface {if_status} | OID: {check.snmp_oid}"
+                    msg = f"[{label}] Interface down"
                 else:
                     status = "warning"
-                    msg = f"Interface {if_status} | OID: {check.snmp_oid}"
+                    msg = f"[{label}] Interface {if_status}"
             else:
                 # 基本存活確認：sysUpTime + sysDescr
                 data = _snmp_get(ip, community, [
