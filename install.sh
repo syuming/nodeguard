@@ -91,7 +91,7 @@ success "資料庫就緒"
 
 # ── 7. 靜態檔案 ───────────────────────────────────────────────────────────────
 info "整理靜態檔案..."
-python manage.py collectstatic --noinput --quiet 2>/dev/null || true
+python manage.py collectstatic --noinput
 success "靜態檔案就緒"
 
 # ── 8. 建立管理員帳號 ─────────────────────────────────────────────────────────
