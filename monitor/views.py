@@ -1,5 +1,6 @@
 import ipaddress
 import json
+import re
 import subprocess
 import threading
 import time
@@ -301,8 +302,15 @@ def device_bulk_add(request):
         elif profile.company:
             company = profile.company
 
+        # 動態收集所有提交的列（支援超過 10 筆）
+        row_indices = sorted({
+            int(m.group(1))
+            for key in request.POST
+            if (m := re.match(r'^name_(\d+)$', key))
+        })
+
         created, errors = [], []
-        for i in range(1, 11):
+        for i in row_indices:
             name = request.POST.get(f"name_{i}", "").strip()
             ip   = request.POST.get(f"ip_{i}", "").strip()
             if not name and not ip:

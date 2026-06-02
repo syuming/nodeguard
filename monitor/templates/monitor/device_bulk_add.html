@@ -110,27 +110,74 @@
 
 {% block scripts %}
 <script>
-// IP 輸入時顯示 Ping 按鈕
-document.querySelectorAll(".ip-input").forEach(input => {
-  input.addEventListener("input", () => {
-    const btn = document.querySelector(`.ping-btn[data-row="${input.dataset.row}"]`);
-    if (btn) btn.style.display = input.value.trim() ? "" : "none";
-  });
-});
+let maxRow = 10;
+const tbody = document.querySelector("tbody");
 
-// Ping 測試
-document.querySelectorAll(".ping-btn").forEach(btn => {
-  btn.addEventListener("click", async () => {
-    const row = btn.dataset.row;
-    const ip = document.querySelector(`input[name="ip_${row}"]`).value.trim();
+function createRow(n) {
+  const tr = document.createElement("tr");
+  tr.id = `bulk-row-${n}`;
+  tr.innerHTML = `
+    <td class="text-muted">${n}</td>
+    <td><input type="text" name="name_${n}" class="form-control form-control-sm" placeholder="設備名稱"></td>
+    <td><input type="text" name="ip_${n}" class="form-control form-control-sm" placeholder="192.168.1.1" data-row="${n}"></td>
+    <td><button type="button" class="btn btn-sm btn-outline-secondary ping-btn" data-row="${n}" title="Ping 測試" style="display:none"><i class="bi bi-reception-4"></i></button></td>`;
+  tbody.appendChild(tr);
+  bindRow(n);
+}
+
+function ensureRow(n) {
+  if (!document.getElementById(`bulk-row-${n}`)) {
+    createRow(n);
+    if (n > maxRow) maxRow = n;
+  }
+}
+
+function fillRow(n, name, ip) {
+  ensureRow(n);
+  const nameEl = document.querySelector(`input[name="name_${n}"]`);
+  const ipEl   = document.querySelector(`input[name="ip_${n}"]`);
+  const pingBtn = document.querySelector(`.ping-btn[data-row="${n}"]`);
+  if (nameEl && name !== undefined) nameEl.value = name;
+  if (ipEl   && ip   !== undefined) {
+    ipEl.value = ip;
+    if (pingBtn) pingBtn.style.display = ip ? "" : "none";
+  }
+}
+
+function handlePaste(e) {
+  const text = e.clipboardData.getData("text");
+  // 只有含 Tab 或多行才攔截（Excel 格式）
+  if (!text.includes("\t") && !text.split(/\r?\n/).filter(l => l.trim()).length > 1) return;
+  if (!text.includes("\t") && !text.includes("\n")) return;
+  e.preventDefault();
+
+  const startRow = parseInt(e.target.name.split("_")[1]);
+  const lines = text.trim().split(/\r?\n/).filter(l => l.trim());
+  lines.forEach((line, i) => {
+    const cols = line.split("\t");
+    fillRow(startRow + i, (cols[0] || "").trim(), (cols[1] || "").trim());
+  });
+}
+
+function bindRow(n) {
+  const ipEl   = document.querySelector(`input[name="ip_${n}"]`);
+  const nameEl = document.querySelector(`input[name="name_${n}"]`);
+  const pingBtn = document.querySelector(`.ping-btn[data-row="${n}"]`);
+
+  ipEl?.addEventListener("input", () => {
+    if (pingBtn) pingBtn.style.display = ipEl.value.trim() ? "" : "none";
+  });
+  nameEl?.addEventListener("paste", handlePaste);
+
+  pingBtn?.addEventListener("click", async () => {
+    const ip = ipEl?.value.trim();
     if (!ip) return;
-    const title = document.getElementById("ping-result-title");
+    const title  = document.getElementById("ping-result-title");
     const output = document.getElementById("ping-result-output");
-    const box = document.getElementById("ping-result");
-    title.textContent = `Ping → ${ip}`;
+    document.getElementById("ping-result").style.display = "block";
+    title.textContent  = `Ping → ${ip}`;
     output.textContent = "檢測中...";
     output.style.color = "#94a3b8";
-    box.style.display = "block";
     try {
       const r = await fetch("/api/ping-check/", {
         method: "POST",
@@ -142,7 +189,10 @@ document.querySelectorAll(".ping-btn").forEach(btn => {
       output.style.color = d.success ? "#86efac" : "#fca5a5";
     } catch { output.textContent = "連線失敗"; output.style.color = "#fca5a5"; }
   });
-});
+}
+
+// 綁定初始 10 列
+for (let i = 1; i <= 10; i++) bindRow(i);
 
 function getCookie(name) {
   const v = document.cookie.match("(^|;)\\s*" + name + "\\s*=\\s*([^;]+)");
