@@ -38,6 +38,14 @@ for cmd in python3 git; do
 done
 success "系統環境正常（$(python3 --version)）"
 
+# ── 1b. 安裝系統工具 ──────────────────────────────────────────────────────────
+if ! command -v traceroute &>/dev/null; then
+    info "安裝 traceroute..."
+    sudo apt-get install -y traceroute &>/dev/null && success "traceroute 安裝完成" || warn "traceroute 安裝失敗，路由追蹤功能將無法使用"
+else
+    info "traceroute 已存在，略過"
+fi
+
 # ── 2. 取得程式碼 ─────────────────────────────────────────────────────────────
 # 若 install.sh 本身就在 repo 內（clone 後直接執行），直接用該目錄，不重複 clone
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]:-}")" 2>/dev/null && pwd || true)"
