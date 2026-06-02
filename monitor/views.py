@@ -393,8 +393,11 @@ def api_device_status(request):
             "name": d.name,
             "ip_address": d.ip_address,
             "status": d.status,
+            "status_display": d.get_status_display(),
             "last_checked": tz.localtime(d.last_checked).strftime("%Y-%m-%d %H:%M:%S") if d.last_checked else None,
-            "company__name": d.company.name if d.company else None,
+            "company_id": d.company_id,
+            "company_name": d.company.name if d.company else None,
+            "device_type_display": d.get_device_type_display(),
         })
     return JsonResponse({"devices": result})
 

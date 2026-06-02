@@ -15,37 +15,29 @@
 {% if profile.company %}
   {% with link="/company/"|add:profile.company.id|stringformat:"s"|add:"/" %}
   <div class="row g-3 mb-4">
-    <div class="col-3">
-      <a href="{{ link }}" class="text-decoration-none">
-        <div class="card stat-card text-center p-3">
-          <div style="font-size:2rem;color:#38bdf8">{{ total }}</div>
-          <div class="text-muted">設備總數</div>
-        </div>
-      </a>
+    <div class="col-3"><a href="{{ link }}" class="text-decoration-none">
+      <div class="card stat-card text-center p-3">
+        <div id="stat-total" style="font-size:2rem;color:#38bdf8">{{ total }}</div>
+        <div class="text-muted">設備總數</div>
+      </div></a>
     </div>
-    <div class="col-3">
-      <a href="{{ link }}" class="text-decoration-none">
-        <div class="card stat-card text-center p-3">
-          <div style="font-size:2rem;color:#22c55e">{{ online }}</div>
-          <div class="text-muted">正常</div>
-        </div>
-      </a>
+    <div class="col-3"><a href="{{ link }}" class="text-decoration-none">
+      <div class="card stat-card text-center p-3">
+        <div id="stat-online" style="font-size:2rem;color:#22c55e">{{ online }}</div>
+        <div class="text-muted">正常</div>
+      </div></a>
     </div>
-    <div class="col-3">
-      <a href="{{ link }}" class="text-decoration-none">
-        <div class="card stat-card text-center p-3">
-          <div style="font-size:2rem;color:#f59e0b">{{ warning }}</div>
-          <div class="text-muted">警告</div>
-        </div>
-      </a>
+    <div class="col-3"><a href="{{ link }}" class="text-decoration-none">
+      <div class="card stat-card text-center p-3">
+        <div id="stat-warning" style="font-size:2rem;color:#f59e0b">{{ warning }}</div>
+        <div class="text-muted">警告</div>
+      </div></a>
     </div>
-    <div class="col-3">
-      <a href="{{ link }}" class="text-decoration-none">
-        <div class="card stat-card text-center p-3">
-          <div style="font-size:2rem;color:#ef4444">{{ offline }}</div>
-          <div class="text-muted">離線</div>
-        </div>
-      </a>
+    <div class="col-3"><a href="{{ link }}" class="text-decoration-none">
+      <div class="card stat-card text-center p-3">
+        <div id="stat-offline" style="font-size:2rem;color:#ef4444">{{ offline }}</div>
+        <div class="text-muted">離線</div>
+      </div></a>
     </div>
   </div>
   {% endwith %}
@@ -53,25 +45,25 @@
 <div class="row g-3 mb-4">
   <div class="col-3">
     <div class="card stat-card text-center p-3">
-      <div style="font-size:2rem;color:#38bdf8">{{ total }}</div>
+      <div id="stat-total" style="font-size:2rem;color:#38bdf8">{{ total }}</div>
       <div class="text-muted">設備總數</div>
     </div>
   </div>
   <div class="col-3">
     <div class="card stat-card text-center p-3">
-      <div style="font-size:2rem;color:#22c55e">{{ online }}</div>
+      <div id="stat-online" style="font-size:2rem;color:#22c55e">{{ online }}</div>
       <div class="text-muted">正常</div>
     </div>
   </div>
   <div class="col-3">
     <div class="card stat-card text-center p-3">
-      <div style="font-size:2rem;color:#f59e0b">{{ warning }}</div>
+      <div id="stat-warning" style="font-size:2rem;color:#f59e0b">{{ warning }}</div>
       <div class="text-muted">警告</div>
     </div>
   </div>
   <div class="col-3">
     <div class="card stat-card text-center p-3">
-      <div style="font-size:2rem;color:#ef4444">{{ offline }}</div>
+      <div id="stat-offline" style="font-size:2rem;color:#ef4444">{{ offline }}</div>
       <div class="text-muted">離線</div>
     </div>
   </div>
@@ -94,16 +86,16 @@
         </tr></thead>
         <tbody>
           {% for cs in company_stats %}
-          <tr>
+          <tr id="company-row-{{ cs.company.id }}">
             <td>
               <a href="/company/{{ cs.company.id }}/" class="text-decoration-none" style="color:#38bdf8">
                 <i class="bi bi-building me-1"></i>{{ cs.company.name }}
               </a>
             </td>
-            <td><span class="badge bg-secondary">{{ cs.total }}</span></td>
-            <td><span class="badge badge-online text-white">{{ cs.online }}</span></td>
-            <td><span class="badge badge-warning text-white">{{ cs.warning }}</span></td>
-            <td><span class="badge badge-offline text-white">{{ cs.offline }}</span></td>
+            <td><span class="badge bg-secondary cs-total">{{ cs.total }}</span></td>
+            <td><span class="badge badge-online text-white cs-online">{{ cs.online }}</span></td>
+            <td><span class="badge badge-warning text-white cs-warning">{{ cs.warning }}</span></td>
+            <td><span class="badge badge-offline text-white cs-offline">{{ cs.offline }}</span></td>
           </tr>
           {% endfor %}
         </tbody>
@@ -117,9 +109,7 @@
 <div class="d-flex justify-content-between align-items-center mb-3">
   <h5 class="mb-0">
     <i class="bi bi-exclamation-triangle me-2" style="color:#f59e0b"></i>需要注意的設備
-    {% if alerts %}
-    <span class="badge bg-danger ms-2">{{ alerts|length }}</span>
-    {% endif %}
+    <span id="alert-count-badge" class="badge bg-danger ms-2" {% if not alerts %}style="display:none"{% endif %}>{{ alerts|length }}</span>
   </h5>
   <div class="d-flex gap-2">
     <button class="btn btn-sm btn-outline-info" onclick="checkAll()">
@@ -198,33 +188,100 @@ function getCookie(name) {
   const v = document.cookie.match('(^|;) ?' + name + '=([^;]*)(;|$)');
   return v ? v[2] : null;
 }
+const STATUS_LABEL = {online:"Online", offline:"Offline", warning:"Warning", unknown:"Unknown"};
+
+function alertRow(d) {
+  const companyLink = d.company_id
+    ? `<a href="/company/${d.company_id}/" class="text-decoration-none" style="color:#64748b;font-size:.85rem"><i class="bi bi-building me-1"></i>${d.company_name}</a>`
+    : '<span class="text-muted">-</span>';
+  return `<tr id="row-${d.id}">
+    <td><span class="status-dot dot-${d.status}"></span><span class="badge badge-${d.status} text-white">${d.status_display}</span></td>
+    <td><a href="/device/${d.id}/" class="text-decoration-none" style="color:#38bdf8">${d.name}</a></td>
+    <td><code style="color:#94a3b8">${d.ip_address}</code></td>
+    <td>${companyLink}</td>
+    <td><span class="badge bg-secondary">${d.device_type_display}</span></td>
+    <td class="text-muted" style="font-size:.85rem">${d.last_checked || '-'}</td>
+    <td>
+      <button class="btn btn-sm btn-outline-secondary" onclick="checkDevice(${d.id})" title="立即檢查"><i class="bi bi-arrow-repeat"></i></button>
+      <a href="/device/${d.id}/" class="btn btn-sm btn-outline-info" title="查看詳情"><i class="bi bi-eye"></i></a>
+    </td>
+  </tr>`;
+}
+
 function pollStatus() {
   fetch("/api/status/")
     .then(r => r.json())
     .then(data => {
       const tbody = document.getElementById("alert-table-body");
-      let hasAlerts = false;
+      let total = 0, online = 0, warning = 0, offline = 0;
+      const companyStats = {};
+
       data.devices.forEach(d => {
+        total++;
+        if (d.status === "online") online++;
+        else if (d.status === "warning") warning++;
+        else if (d.status === "offline") offline++;
+
+        // 各公司統計
+        if (d.company_id) {
+          if (!companyStats[d.company_id]) companyStats[d.company_id] = {total:0,online:0,warning:0,offline:0};
+          const cs = companyStats[d.company_id];
+          cs.total++;
+          if (d.status === "online") cs.online++;
+          else if (d.status === "warning") cs.warning++;
+          else if (d.status === "offline") cs.offline++;
+        }
+
         const row = document.getElementById("row-" + d.id);
         if (d.status === "offline" || d.status === "warning") {
-          hasAlerts = true;
           if (row) {
-            const dot   = row.querySelector(".status-dot");
+            row.querySelector(".status-dot").className = "status-dot dot-" + d.status;
             const badge = row.querySelector(".badge");
-            const ts    = row.querySelectorAll("td")[5];
-            if (dot)   dot.className = "status-dot dot-" + d.status;
-            if (badge) {
-              badge.className = "badge text-white badge-" + d.status;
-              badge.textContent = {online:"Online",offline:"Offline",warning:"Warning",unknown:"Unknown"}[d.status] || d.status;
-            }
-            if (ts && d.last_checked) ts.textContent = d.last_checked;
+            badge.className = "badge badge-" + d.status + " text-white";
+            badge.textContent = d.status_display;
+            row.querySelectorAll("td")[5].textContent = d.last_checked || "-";
+          } else {
+            tbody.insertAdjacentHTML("beforeend", alertRow(d));
           }
         } else if (row) {
           row.remove();
         }
       });
+
+      // 更新 stat 卡片
+      const el = id => document.getElementById(id);
+      if (el("stat-total"))   el("stat-total").textContent   = total;
+      if (el("stat-online"))  el("stat-online").textContent  = online;
+      if (el("stat-warning")) el("stat-warning").textContent = warning;
+      if (el("stat-offline")) el("stat-offline").textContent = offline;
+
+      // 更新 alert count badge
+      const alertBadge = el("alert-count-badge");
+      if (alertBadge) {
+        const alertCount = offline + warning;
+        alertBadge.textContent = alertCount;
+        alertBadge.style.display = alertCount > 0 ? "" : "none";
+      }
+
+      // 空狀態訊息
+      if (tbody && tbody.querySelectorAll("tr[id]").length === 0 && !tbody.querySelector(".no-alert-row")) {
+        tbody.innerHTML = '<tr class="no-alert-row"><td colspan="7" class="text-center text-muted py-5"><i class="bi bi-check-circle display-6 d-block mb-2" style="color:#22c55e"></i>所有設備運作正常</td></tr>';
+      } else if (tbody && tbody.querySelectorAll("tr[id]").length > 0) {
+        tbody.querySelector(".no-alert-row")?.remove();
+      }
+
+      // 各公司彙總更新
+      Object.entries(companyStats).forEach(([cid, cs]) => {
+        const crow = document.getElementById("company-row-" + cid);
+        if (!crow) return;
+        crow.querySelector(".cs-total").textContent  = cs.total;
+        crow.querySelector(".cs-online").textContent = cs.online;
+        crow.querySelector(".cs-warning").textContent = cs.warning;
+        crow.querySelector(".cs-offline").textContent = cs.offline;
+      });
     });
 }
+pollStatus();
 setInterval(pollStatus, 10000);
 
 function updateMonitorBtn(monitoring, interval) {

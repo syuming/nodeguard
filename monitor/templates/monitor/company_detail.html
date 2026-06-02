@@ -31,25 +31,25 @@
 <div class="row g-3 mb-4">
   <div class="col-3">
     <div class="card stat-card text-center p-3">
-      <div style="font-size:2rem;color:#38bdf8">{{ devices|length }}</div>
+      <div id="stat-total" style="font-size:2rem;color:#38bdf8">{{ devices|length }}</div>
       <div class="text-muted">設備總數</div>
     </div>
   </div>
   <div class="col-3">
     <div class="card stat-card text-center p-3">
-      <div style="font-size:2rem;color:#22c55e">{{ online }}</div>
+      <div id="stat-online" style="font-size:2rem;color:#22c55e">{{ online }}</div>
       <div class="text-muted">正常</div>
     </div>
   </div>
   <div class="col-3">
     <div class="card stat-card text-center p-3">
-      <div style="font-size:2rem;color:#f59e0b">{{ warning }}</div>
+      <div id="stat-warning" style="font-size:2rem;color:#f59e0b">{{ warning }}</div>
       <div class="text-muted">警告</div>
     </div>
   </div>
   <div class="col-3">
     <div class="card stat-card text-center p-3">
-      <div style="font-size:2rem;color:#ef4444">{{ offline }}</div>
+      <div id="stat-offline" style="font-size:2rem;color:#ef4444">{{ offline }}</div>
       <div class="text-muted">離線</div>
     </div>
   </div>
@@ -81,7 +81,7 @@
         </thead>
         <tbody>
           {% for device in devices %}
-          <tr class="{% if device.status == 'offline' %}row-offline{% elif device.status == 'warning' %}row-warning{% endif %}">
+          <tr id="row-{{ device.id }}" class="{% if device.status == 'offline' %}row-offline{% elif device.status == 'warning' %}row-warning{% endif %}">
             <td>
               <span class="status-dot dot-{{ device.status }}"></span>
               <span class="badge badge-{{ device.status }} text-white">{{ device.get_status_display }}</span>
@@ -129,6 +129,8 @@
 
 {% block scripts %}
 <script>
+const COMPANY_ID = {{ company.id }};
+
 function checkDevice(id) {
   fetch(`/api/device/${id}/check/`, { method:"POST", headers:{"X-CSRFToken":getCookie("csrftoken")} });
 }
@@ -136,5 +138,42 @@ function getCookie(name) {
   const v = document.cookie.match('(^|;) ?' + name + '=([^;]*)(;|$)');
   return v ? v[2] : null;
 }
+
+function pollStatus() {
+  fetch("/api/status/")
+    .then(r => r.json())
+    .then(data => {
+      const devices = data.devices.filter(d => d.company_id === COMPANY_ID);
+      let total = devices.length, online = 0, warning = 0, offline = 0;
+
+      devices.forEach(d => {
+        if (d.status === "online") online++;
+        else if (d.status === "warning") warning++;
+        else if (d.status === "offline") offline++;
+
+        const row = document.getElementById("row-" + d.id);
+        if (!row) return;
+        // 狀態 dot + badge
+        row.querySelector(".status-dot").className = "status-dot dot-" + d.status;
+        const badge = row.querySelector(".badge");
+        badge.className = "badge badge-" + d.status + " text-white";
+        badge.textContent = d.status_display;
+        // 列背景
+        row.className = d.status === "offline" ? "row-offline" : d.status === "warning" ? "row-warning" : "";
+        // 最後檢查時間（第 5 欄，index 4）
+        const tds = row.querySelectorAll("td");
+        if (tds[4]) tds[4].textContent = d.last_checked || "-";
+      });
+
+      // 更新 stat 卡片
+      const el = id => document.getElementById(id);
+      if (el("stat-total"))   el("stat-total").textContent   = total;
+      if (el("stat-online"))  el("stat-online").textContent  = online;
+      if (el("stat-warning")) el("stat-warning").textContent = warning;
+      if (el("stat-offline")) el("stat-offline").textContent = offline;
+    });
+}
+pollStatus();
+setInterval(pollStatus, 10000);
 </script>
 {% endblock %}
