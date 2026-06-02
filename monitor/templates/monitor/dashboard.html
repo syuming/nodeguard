@@ -11,6 +11,13 @@
   {% endif %}
 </div>
 
+{% if orphan_count %}
+<div class="alert py-2 mb-3 d-flex align-items-center justify-content-between" style="background:#422006;border-color:#92400e;color:#fcd34d;font-size:.875rem">
+  <span><i class="bi bi-exclamation-triangle-fill me-2"></i>有 <strong>{{ orphan_count }}</strong> 台設備未指派公司，不會顯示在公司頁面中</span>
+  <a href="/device/orphans/" class="btn btn-sm btn-warning">立即處理</a>
+</div>
+{% endif %}
+
 <!-- 統計卡片 -->
 {% if profile.company %}
   {% with link="/company/"|add:profile.company.id|stringformat:"s"|add:"/" %}

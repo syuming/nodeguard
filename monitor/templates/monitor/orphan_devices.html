@@ -1,0 +1,130 @@
+{% extends "monitor/base.html" %}
+{% block title %}未指派公司的設備 - NodeGuard{% endblock %}
+
+{% block content %}
+<div class="mb-2" style="font-size:.85rem;color:#64748b">
+  <a href="/" class="text-decoration-none" style="color:#64748b"><i class="bi bi-house me-1"></i>Dashboard</a>
+  <span class="mx-1">/</span>
+  <span style="color:#94a3b8">未指派公司的設備</span>
+</div>
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+  <h4 class="mb-0" style="color:#f1f5f9">
+    <i class="bi bi-exclamation-triangle me-2" style="color:#f59e0b"></i>未指派公司的設備
+  </h4>
+  <span class="badge bg-warning text-dark fs-6">{{ devices|length }} 台</span>
+</div>
+
+{% if devices %}
+<div class="alert py-2 mb-4" style="background:#422006;border-color:#92400e;color:#fcd34d;font-size:.875rem">
+  <i class="bi bi-info-circle me-1"></i>以下設備未歸屬任何公司，將不會顯示在公司頁面與首頁統計中，請指派公司。
+</div>
+
+<div class="card">
+  <div class="card-body p-0">
+    <div class="table-responsive">
+      <table class="table table-hover mb-0">
+        <thead>
+          <tr>
+            <th>設備名稱</th>
+            <th>IP 位址</th>
+            <th>狀態</th>
+            <th>指派公司</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for device in devices %}
+          <tr id="orphan-row-{{ device.id }}">
+            <td>
+              <a href="/device/{{ device.id }}/" class="text-decoration-none" style="color:#38bdf8">{{ device.name }}</a>
+            </td>
+            <td><code style="color:#94a3b8">{{ device.ip_address }}</code></td>
+            <td>
+              <span class="badge badge-{{ device.status }} text-white">{{ device.get_status_display }}</span>
+            </td>
+            <td>
+              <div class="d-flex gap-2 align-items-center">
+                <select class="form-select form-select-sm company-select" style="max-width:200px" data-id="{{ device.id }}">
+                  <option value="">— 選擇公司 —</option>
+                  {% for c in companies %}
+                  <option value="{{ c.id }}">{{ c.name }}</option>
+                  {% endfor %}
+                </select>
+                <button class="btn btn-sm btn-primary assign-btn" data-id="{{ device.id }}" disabled>
+                  指派
+                </button>
+                <span class="assign-ok text-success" style="display:none;font-size:.85rem">
+                  <i class="bi bi-check-circle-fill me-1"></i>已指派
+                </span>
+              </div>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+{% else %}
+<div class="card">
+  <div class="card-body text-center py-5 text-muted">
+    <i class="bi bi-check-circle display-6 d-block mb-2" style="color:#22c55e"></i>
+    目前沒有未指派公司的設備
+  </div>
+</div>
+{% endif %}
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+function getCookie(name) {
+  const v = document.cookie.match("(^|;)\\s*" + name + "\\s*=\\s*([^;]+)");
+  return v ? v.pop() : "";
+}
+
+document.querySelectorAll(".company-select").forEach(sel => {
+  sel.addEventListener("change", () => {
+    const btn = document.querySelector(`.assign-btn[data-id="${sel.dataset.id}"]`);
+    btn.disabled = !sel.value;
+  });
+});
+
+document.querySelectorAll(".assign-btn").forEach(btn => {
+  btn.addEventListener("click", async () => {
+    const id  = btn.dataset.id;
+    const sel = document.querySelector(`.company-select[data-id="${id}"]`);
+    if (!sel.value) return;
+    btn.disabled = true;
+    btn.textContent = "處理中...";
+    try {
+      const r = await fetch(`/api/device/${id}/assign-company/`, {
+        method: "POST",
+        headers: {"Content-Type": "application/x-www-form-urlencoded", "X-CSRFToken": getCookie("csrftoken")},
+        body: `company_id=${sel.value}`,
+      });
+      const d = await r.json();
+      if (d.ok) {
+        const row = document.getElementById(`orphan-row-${id}`);
+        row.style.transition = "opacity .4s";
+        row.style.opacity = "0";
+        setTimeout(() => row.remove(), 400);
+        // 更新筆數
+        const remaining = document.querySelectorAll("tbody tr").length - 1;
+        document.querySelector(".badge.bg-warning").textContent = `${remaining} 台`;
+        if (remaining === 0) location.reload();
+      } else {
+        btn.disabled = false;
+        btn.textContent = "指派";
+        alert(d.error || "指派失敗");
+      }
+    } catch {
+      btn.disabled = false;
+      btn.textContent = "指派";
+      alert("連線失敗");
+    }
+  });
+});
+</script>
+{% endblock %}

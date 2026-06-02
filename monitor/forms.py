@@ -134,6 +134,8 @@ class DeviceForm(forms.ModelForm):
             self.fields["company"].empty_label = None
         else:
             self.fields["company"].queryset = Company.objects.all().order_by("name")
+            self.fields["company"].required = True
+            self.fields["company"].empty_label = "— 請選擇公司 —"
             # Pre-select company when coming from company detail page
             if initial_company_pk:
                 try:

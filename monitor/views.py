@@ -230,6 +230,8 @@ def dashboard(request):
                 "warning": cd.filter(status="warning").count(),
             })
 
+    orphan_count = Device.objects.filter(company__isnull=True).count() if profile.is_admin else 0
+
     return render(request, "monitor/dashboard.html", {
         "total": total,
         "online": online,
@@ -238,6 +240,7 @@ def dashboard(request):
         "alerts": alerts,
         "profile": profile,
         "company_stats": company_stats,
+        "orphan_count": orphan_count,
     })
 
 
@@ -518,6 +521,37 @@ def company_detail(request, pk):
         "bulk_created": bulk_created, "bulk_errors": bulk_errors, "bulk_skipped": bulk_skipped,
         **status_counts,
     })
+
+
+@login_required
+def orphan_devices(request):
+    profile = get_profile(request.user)
+    if not profile.is_admin:
+        raise Http404
+    devices = Device.objects.filter(company__isnull=True).order_by("name")
+    companies = Company.objects.all().order_by("name")
+    return render(request, "monitor/orphan_devices.html", {
+        "devices": devices, "companies": companies, "profile": profile,
+    })
+
+
+@login_required
+@require_POST
+def api_assign_company(request, pk):
+    profile = get_profile(request.user)
+    if not profile.is_admin:
+        return JsonResponse({"ok": False}, status=403)
+    device = get_object_or_404(Device, pk=pk, company__isnull=True)
+    cid = request.POST.get("company_id", "").strip()
+    if not cid:
+        return JsonResponse({"ok": False, "error": "未指定公司"})
+    try:
+        company = Company.objects.get(pk=cid)
+    except Company.DoesNotExist:
+        return JsonResponse({"ok": False, "error": "公司不存在"})
+    device.company = company
+    device.save(update_fields=["company"])
+    return JsonResponse({"ok": True, "company_name": company.name})
 
 
 @login_required

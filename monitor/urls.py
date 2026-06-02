@@ -21,6 +21,8 @@ urlpatterns = [
     path("checks/<int:check_pk>/delete/", views.monitor_check_delete, name="monitor_check_delete"),
     path("checks/<int:check_pk>/toggle/", views.monitor_check_toggle, name="monitor_check_toggle"),
 
+    path("device/orphans/", views.orphan_devices, name="orphan_devices"),
+    path("api/device/<int:pk>/assign-company/", views.api_assign_company, name="api_assign_company"),
     path("company/", views.company_list, name="company_list"),
     path("company/<int:pk>/", views.company_detail, name="company_detail"),
     path("company/add/", views.company_add, name="company_add"),
