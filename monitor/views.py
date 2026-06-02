@@ -703,6 +703,22 @@ def api_system_update(request):
 
 
 @login_required
+@require_POST
+def api_system_restart(request):
+    if not hasattr(request.user, "profile") or request.user.profile.role != "admin":
+        return JsonResponse({"error": "無權限"}, status=403)
+    app_dir = Path(__file__).resolve().parent.parent
+    subprocess.Popen(
+        ["bash", "-c", f'bash "{app_dir}/stop.sh" && bash "{app_dir}/start.sh"'],
+        stdout=subprocess.DEVNULL,
+        stderr=subprocess.DEVNULL,
+        start_new_session=True,
+        close_fds=True,
+    )
+    return JsonResponse({"status": "restarting"})
+
+
+@login_required
 def api_changelog(request):
     changelog_file = Path(__file__).resolve().parent.parent / "CHANGELOG.md"
     try:

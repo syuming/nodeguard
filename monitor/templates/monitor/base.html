@@ -107,6 +107,9 @@
     <a class="navbar-brand" href="/"><i class="bi bi-hdd-network me-2"></i>NodeGuard</a>
     <span style="font-size:.7rem;color:#475569;margin-left:4px;margin-right:8px">
       <span onclick="openChangelog()" style="cursor:pointer;text-decoration:underline dotted;text-underline-offset:3px" title="查看更新歷程">v{{ app_version }}</span>
+      {% if user.is_authenticated and user.profile.role == "admin" %}
+      <span onclick="doRestart()" title="重啟服務" style="cursor:pointer;margin-left:4px;color:#64748b;font-size:.8rem" id="restart-btn"><i class="bi bi-arrow-clockwise"></i></span>
+      {% endif %}
       <span id="update-badge" style="display:none">
         <span class="badge ms-1" style="background:#f59e0b;font-size:.65rem;cursor:pointer" onclick="document.getElementById('updateModal').style.display='flex'" title="有新版本可更新">
           <i class="bi bi-arrow-up-circle-fill me-1"></i>有新版本
@@ -190,6 +193,22 @@ function updateThemeBtn(theme) {
 {% block scripts %}{% endblock %}
 
 {% if user.is_authenticated %}
+<!-- 重啟 Modal -->
+<div id="restartModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:9999;align-items:center;justify-content:center">
+  <div style="background:var(--bg-card);border-radius:12px;padding:2rem;width:380px;max-width:90vw;box-shadow:0 20px 60px rgba(0,0,0,.4)">
+    <h5 style="margin:0 0 1rem;color:var(--text-primary)"><i class="bi bi-arrow-clockwise me-2" style="color:#0ea5e9"></i>重啟服務</h5>
+    <div id="restart-msg" style="color:var(--text-secondary);font-size:.9rem;margin-bottom:1.25rem">確定要重啟 NodeGuard 服務嗎？重啟期間頁面會短暫無法連線。</div>
+    <div id="restart-log" style="display:none;background:var(--bg-body);border-radius:8px;padding:1rem;margin-bottom:1rem;font-size:.8rem;color:#94a3b8;text-align:center">
+      <div class="spin" style="display:inline-block;margin-right:.5rem">⟳</div>
+      <span id="restart-log-text">重啟中...</span>
+    </div>
+    <div style="display:flex;gap:.75rem;justify-content:flex-end">
+      <button onclick="document.getElementById('restartModal').style.display='none'" class="btn btn-sm btn-outline-secondary" id="restart-cancel-btn">取消</button>
+      <button onclick="confirmRestart()" class="btn btn-sm btn-info" id="restart-confirm-btn" style="color:#fff"><i class="bi bi-arrow-clockwise me-1"></i>確認重啟</button>
+    </div>
+  </div>
+</div>
+
 <!-- Changelog Modal -->
 <div id="changelogModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:9999;align-items:center;justify-content:center" onclick="if(event.target===this)this.style.display='none'">
   <div style="background:var(--bg-card);border-radius:12px;padding:2rem;width:560px;max-width:92vw;max-height:80vh;display:flex;flex-direction:column;box-shadow:0 20px 60px rgba(0,0,0,.4)">
@@ -256,7 +275,7 @@ function doUpdate() {
     .then(r => r.json())
     .then(() => {
       logText.textContent = '更新中，服務即將重啟，請稍候...';
-      waitForRestart();
+      waitForRestart('update-log-text');
     })
     .catch(() => {
       logText.textContent = '啟動更新失敗，請手動執行 update.sh';
@@ -264,8 +283,9 @@ function doUpdate() {
     });
 }
 
-async function waitForRestart() {
-  const logText = document.getElementById('update-log-text');
+async function waitForRestart(logElemId) {
+  const logText = document.getElementById(logElemId);
+  const isUpdate = logElemId === 'update-log-text';
   await new Promise(r => setTimeout(r, 5000));
   let attempts = 0;
   while (attempts < 60) {
@@ -273,7 +293,7 @@ async function waitForRestart() {
     try {
       const r = await fetch('/api/monitor/status/');
       if (r.ok) {
-        logText.textContent = '更新完成！正在重新載入...';
+        logText.textContent = isUpdate ? '更新完成！正在重新載入...' : '重啟完成！正在重新載入...';
         await new Promise(r => setTimeout(r, 1000));
         location.reload();
         return;
@@ -281,14 +301,37 @@ async function waitForRestart() {
     } catch {}
     attempts++;
     const dots = '.'.repeat((attempts % 3) + 1);
-    logText.textContent = `更新中，等待服務重啟${dots}`;
+    logText.textContent = isUpdate ? `更新中，等待服務重啟${dots}` : `等待服務重啟${dots}`;
   }
-  document.getElementById('update-log-text').textContent = '重啟逾時，請手動重新整理頁面';
+  logText.textContent = '逾時，請手動重新整理頁面';
 }
 
 function getCookie(name) {
   const v = document.cookie.match('(^|;)\\s*' + name + '\\s*=\\s*([^;]+)');
   return v ? v.pop() : '';
+}
+
+function doRestart() {
+  document.getElementById('restart-msg').style.display = 'block';
+  document.getElementById('restart-log').style.display = 'none';
+  document.getElementById('restart-cancel-btn').disabled = false;
+  document.getElementById('restart-confirm-btn').disabled = false;
+  document.getElementById('restartModal').style.display = 'flex';
+}
+
+function confirmRestart() {
+  document.getElementById('restart-confirm-btn').disabled = true;
+  document.getElementById('restart-cancel-btn').disabled = true;
+  document.getElementById('restart-msg').style.display = 'none';
+  document.getElementById('restart-log').style.display = 'block';
+  document.getElementById('restart-log-text').textContent = '重啟中，請稍候...';
+
+  fetch('/api/system-restart/', {method:'POST', headers:{'X-CSRFToken': getCookie('csrftoken')}})
+    .then(() => waitForRestart('restart-log-text'))
+    .catch(() => {
+      document.getElementById('restart-log-text').textContent = '重啟失敗，請手動重啟';
+      document.getElementById('restart-cancel-btn').disabled = false;
+    });
 }
 
 function openChangelog() {
