@@ -656,7 +656,7 @@ def email_test(request):
 _VERSION_FILE = Path(__file__).resolve().parent.parent / "VERSION"
 _GITHUB_VERSION_URL = "https://raw.githubusercontent.com/syuming/nodeguard/main/VERSION"
 _ver_cache: dict = {"latest": None, "ts": 0.0}
-_VER_CACHE_TTL = 3600
+_VER_CACHE_TTL = 1800  # 30 分鐘
 
 
 def _parse_ver(v: str) -> tuple:

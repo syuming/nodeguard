@@ -212,7 +212,7 @@ function updateThemeBtn(theme) {
 </div>
 
 <script>
-(function() {
+function checkVersion() {
   fetch('/api/version-check/')
     .then(r => r.json())
     .then(d => {
@@ -223,7 +223,9 @@ function updateThemeBtn(theme) {
       }
     })
     .catch(() => {});
-})();
+}
+checkVersion();
+setInterval(checkVersion, 30 * 60 * 1000);
 
 function doUpdate() {
   const btnUpdate = document.getElementById('btn-update');
