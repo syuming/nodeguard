@@ -284,6 +284,65 @@ def device_add(request):
 
 
 @login_required
+def device_bulk_add(request):
+    profile = get_profile(request.user)
+    companies = Company.objects.all().order_by("name") if profile.is_admin else None
+
+    if request.method == "POST":
+        # 判斷公司
+        company = None
+        if profile.is_admin:
+            cid = request.POST.get("company")
+            if cid:
+                try:
+                    company = Company.objects.get(pk=cid)
+                except Company.DoesNotExist:
+                    pass
+        elif profile.company:
+            company = profile.company
+
+        created, errors = [], []
+        for i in range(1, 11):
+            name = request.POST.get(f"name_{i}", "").strip()
+            ip   = request.POST.get(f"ip_{i}", "").strip()
+            if not name and not ip:
+                continue
+            if not name or not ip:
+                errors.append(f"第 {i} 筆：名稱和 IP 都必須填寫")
+                continue
+            try:
+                device = Device.objects.create(
+                    name=name, ip_address=ip,
+                    company=company, device_type="generic",
+                )
+                MonitorCheck.objects.create(device=device, check_type="ping", interval=3, enabled=True)
+                created.append(device)
+            except Exception as e:
+                errors.append(f"第 {i} 筆（{name} / {ip}）：{e}")
+
+        # 背景跑一次初始檢查
+        def _bg():
+            from .models import Device as _D
+            for dev in created:
+                try:
+                    check_device(_D.objects.get(pk=dev.pk))
+                except Exception:
+                    pass
+        if created:
+            threading.Thread(target=_bg, daemon=True).start()
+
+        return render(request, "monitor/device_bulk_add.html", {
+            "profile": profile, "companies": companies,
+            "created": created, "errors": errors, "done": True,
+        })
+
+    return render(request, "monitor/device_bulk_add.html", {
+        "profile": profile, "companies": companies,
+        "row_range": range(1, 11),
+    })
+
+
+@login_required
 def device_edit(request, pk):
     device = get_object_or_404(Device, pk=pk)
     if not can_access_device(request.user, device):

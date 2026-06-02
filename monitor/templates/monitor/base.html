@@ -123,6 +123,7 @@
       <ul class="navbar-nav me-auto">
         <li class="nav-item"><a class="nav-link" href="/"><i class="bi bi-speedometer2 me-1"></i>Dashboard</a></li>
         <li class="nav-item"><a class="nav-link" href="/device/add/"><i class="bi bi-plus-circle me-1"></i>新增設備</a></li>
+        <li class="nav-item"><a class="nav-link" href="/device/bulk-add/"><i class="bi bi-plus-square me-1"></i>批量新增</a></li>
         {% if user.is_authenticated and user.profile.role == "admin" %}
         <li class="nav-item"><a class="nav-link" href="/company/"><i class="bi bi-building me-1"></i>公司管理</a></li>
         <li class="nav-item"><a class="nav-link" href="/users/"><i class="bi bi-people me-1"></i>使用者管理</a></li>

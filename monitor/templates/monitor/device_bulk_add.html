@@ -1,0 +1,153 @@
+{% extends "monitor/base.html" %}
+{% block title %}批量新增設備 - NodeGuard{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+  <div class="col-9">
+
+    {% if done %}
+    <!-- 結果頁 -->
+    <div class="card mb-3">
+      <div class="card-header"><i class="bi bi-check2-circle me-2"></i>新增結果</div>
+      <div class="card-body">
+        {% if created %}
+        <div class="mb-3">
+          <div class="text-success mb-2"><i class="bi bi-check-circle-fill me-1"></i>成功新增 {{ created|length }} 台設備</div>
+          <ul class="list-unstyled mb-0" style="font-size:.9rem;color:var(--text-secondary)">
+            {% for d in created %}
+            <li><i class="bi bi-hdd-network me-1"></i><a href="/device/{{ d.id }}/" style="color:#38bdf8">{{ d.name }}</a> — <code>{{ d.ip_address }}</code></li>
+            {% endfor %}
+          </ul>
+        </div>
+        {% endif %}
+        {% if errors %}
+        <div>
+          <div class="text-danger mb-2"><i class="bi bi-exclamation-circle-fill me-1"></i>以下 {{ errors|length }} 筆發生錯誤</div>
+          <ul class="list-unstyled mb-0" style="font-size:.9rem;color:#fca5a5">
+            {% for e in errors %}<li>{{ e }}</li>{% endfor %}
+          </ul>
+        </div>
+        {% endif %}
+        <div class="d-flex gap-2 mt-3">
+          <a href="/device/bulk-add/" class="btn btn-primary btn-sm"><i class="bi bi-plus me-1"></i>再次批量新增</a>
+          <a href="/" class="btn btn-outline-secondary btn-sm">返回首頁</a>
+        </div>
+      </div>
+    </div>
+
+    {% else %}
+    <!-- 新增表單 -->
+    <div class="card">
+      <div class="card-header d-flex align-items-center justify-content-between">
+        <span><i class="bi bi-hdd-network me-2"></i>批量新增設備</span>
+        <a href="/device/add/" class="btn btn-sm btn-outline-secondary">單筆新增</a>
+      </div>
+      <div class="card-body">
+        <p class="text-muted" style="font-size:.875rem">最多可一次新增 10 台設備，只填設備名稱和 IP 即可，其他資料可之後再編輯。空白列會自動略過。</p>
+        <form method="post">
+          {% csrf_token %}
+
+          {% if profile.is_admin %}
+          <div class="mb-4">
+            <label class="form-label">所屬公司</label>
+            <select name="company" class="form-select" style="max-width:320px">
+              <option value="">— 不指定 —</option>
+              {% for c in companies %}
+              <option value="{{ c.id }}">{{ c.name }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          {% endif %}
+
+          <div class="table-responsive">
+            <table class="table table-hover align-middle mb-3">
+              <thead>
+                <tr>
+                  <th style="width:40px">#</th>
+                  <th>設備名稱 <span class="text-danger">*</span></th>
+                  <th>IP 位址 <span class="text-danger">*</span></th>
+                  <th style="width:90px"></th>
+                </tr>
+              </thead>
+              <tbody>
+                {% for i in row_range %}
+                <tr id="bulk-row-{{ i }}">
+                  <td class="text-muted">{{ i }}</td>
+                  <td><input type="text" name="name_{{ i }}" class="form-control form-control-sm" placeholder="設備名稱"></td>
+                  <td><input type="text" name="ip_{{ i }}" class="form-control form-control-sm ip-input" placeholder="192.168.1.1" data-row="{{ i }}"></td>
+                  <td>
+                    <button type="button" class="btn btn-sm btn-outline-secondary ping-btn" data-row="{{ i }}" title="Ping 測試" style="display:none">
+                      <i class="bi bi-reception-4"></i>
+                    </button>
+                  </td>
+                </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+
+          <!-- Ping 結果 -->
+          <div id="ping-result" style="display:none;background:var(--bg-body);border-radius:8px;padding:.75rem 1rem;margin-bottom:1rem;font-size:.8rem">
+            <div style="display:flex;justify-content:space-between;margin-bottom:.4rem">
+              <span id="ping-result-title" style="font-weight:600;color:var(--text-primary)"></span>
+              <button type="button" onclick="document.getElementById('ping-result').style.display='none'" style="background:none;border:none;color:var(--text-secondary);cursor:pointer;padding:0"><i class="bi bi-x-lg"></i></button>
+            </div>
+            <pre id="ping-result-output" style="margin:0;white-space:pre-wrap;word-break:break-all;color:#94a3b8;max-height:180px;overflow-y:auto;font-size:.78rem"></pre>
+          </div>
+
+          <p class="text-muted small"><span class="text-danger">*</span> 為必填欄位</p>
+          <div class="d-flex gap-2">
+            <button type="submit" class="btn btn-primary"><i class="bi bi-check2 me-1"></i>批量新增</button>
+            <a href="/" class="btn btn-outline-secondary">取消</a>
+          </div>
+        </form>
+      </div>
+    </div>
+    {% endif %}
+
+  </div>
+</div>
+
+{% block scripts %}
+<script>
+// IP 輸入時顯示 Ping 按鈕
+document.querySelectorAll(".ip-input").forEach(input => {
+  input.addEventListener("input", () => {
+    const btn = document.querySelector(`.ping-btn[data-row="${input.dataset.row}"]`);
+    if (btn) btn.style.display = input.value.trim() ? "" : "none";
+  });
+});
+
+// Ping 測試
+document.querySelectorAll(".ping-btn").forEach(btn => {
+  btn.addEventListener("click", async () => {
+    const row = btn.dataset.row;
+    const ip = document.querySelector(`input[name="ip_${row}"]`).value.trim();
+    if (!ip) return;
+    const title = document.getElementById("ping-result-title");
+    const output = document.getElementById("ping-result-output");
+    const box = document.getElementById("ping-result");
+    title.textContent = `Ping → ${ip}`;
+    output.textContent = "檢測中...";
+    output.style.color = "#94a3b8";
+    box.style.display = "block";
+    try {
+      const r = await fetch("/api/ping-check/", {
+        method: "POST",
+        headers: {"Content-Type": "application/json", "X-CSRFToken": getCookie("csrftoken")},
+        body: JSON.stringify({ip})
+      });
+      const d = await r.json();
+      output.textContent = d.error || d.output;
+      output.style.color = d.success ? "#86efac" : "#fca5a5";
+    } catch { output.textContent = "連線失敗"; output.style.color = "#fca5a5"; }
+  });
+});
+
+function getCookie(name) {
+  const v = document.cookie.match("(^|;)\\s*" + name + "\\s*=\\s*([^;]+)");
+  return v ? v.pop() : "";
+}
+</script>
+{% endblock %}
+{% endblock %}
