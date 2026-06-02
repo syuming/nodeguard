@@ -82,6 +82,14 @@ function getIP() {
 let _ipValid = false;
 let _ipCheckTimer = null;
 
+function isValidIP(ip) {
+  const ipv4 = /^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$/;
+  const m = ip.match(ipv4);
+  if (m) return m.slice(1).every(n => parseInt(n) <= 255);
+  const ipv6 = /^[0-9a-fA-F:]{2,39}$/.test(ip) && ip.includes(":");
+  return ipv6;
+}
+
 function updateSaveBtn() {
   const name = document.getElementById("id_name")?.value.trim();
   const ip   = document.getElementById("id_ip_address")?.value.trim();
@@ -96,6 +104,16 @@ function checkIPDuplicate() {
 
   if (!ip) {
     warn.style.display = "none";
+    ok.style.display   = "none";
+    _ipValid = false;
+    updateSaveBtn();
+    return;
+  }
+
+  // 格式驗證
+  if (!isValidIP(ip)) {
+    document.getElementById("ip-exists-msg").textContent = "IP 格式不正確";
+    warn.style.display = "block";
     ok.style.display   = "none";
     _ipValid = false;
     updateSaveBtn();
