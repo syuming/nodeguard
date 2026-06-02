@@ -56,7 +56,13 @@ rollback() {
 }
 trap rollback ERR
 
-# ── 1. 備份資料庫 ──────────────────────────────────────────────────────────────
+# ── 1. 安裝/補齊系統套件 ──────────────────────────────────────────────────────
+if ! command -v traceroute &>/dev/null; then
+    info "安裝 traceroute..."
+    sudo apt-get install -y traceroute &>/dev/null && success "traceroute 安裝完成" || warn "traceroute 安裝失敗，路由追蹤功能將無法使用"
+fi
+
+# ── 3. 備份資料庫 ──────────────────────────────────────────────────────────────
 if [[ -f "${APP_DIR}/db.sqlite3" ]]; then
     info "備份資料庫..."
     cp "${APP_DIR}/db.sqlite3" "${BACKUP_DIR}/db_${TIMESTAMP}.sqlite3"
@@ -66,35 +72,35 @@ fi
 # 只保留最近 5 份備份
 ls -t "${BACKUP_DIR}"/db_*.sqlite3 2>/dev/null | tail -n +6 | xargs rm -f 2>/dev/null || true
 
-# ── 2. 停止服務 ────────────────────────────────────────────────────────────────
+# ── 4. 停止服務 ────────────────────────────────────────────────────────────────
 info "停止服務..."
 bash "${APP_DIR}/stop.sh" 2>/dev/null || true
 
-# ── 3. 拉取最新程式碼 ──────────────────────────────────────────────────────────
+# ── 5. 拉取最新程式碼 ──────────────────────────────────────────────────────────
 info "拉取最新程式碼..."
 git pull --quiet
 NEW_VERSION=$(cat VERSION)
 success "程式碼已更新（v${PREV_VERSION} → v${NEW_VERSION}）"
 
-# ── 4. 更新 Python 套件 ────────────────────────────────────────────────────────
+# ── 6. 更新 Python 套件 ────────────────────────────────────────────────────────
 info "更新 Python 套件..."
 source venv/bin/activate
 pip install --quiet -r requirements.txt
 success "Python 套件已更新"
 
-# ── 5. 資料庫 Migration ────────────────────────────────────────────────────────
+# ── 7. 資料庫 Migration ────────────────────────────────────────────────────────
 info "執行資料庫 Migration..."
 python manage.py migrate --run-syncdb 2>&1 | grep -E "(OK|Apply|No migration)" || true
 success "資料庫已更新"
 
-# ── 6. 靜態檔案 ────────────────────────────────────────────────────────────────
+# ── 8. 靜態檔案 ────────────────────────────────────────────────────────────────
 info "更新靜態檔案..."
 python manage.py collectstatic --noinput
 success "靜態檔案已更新"
 
 deactivate
 
-# ── 7. 重新啟動 ────────────────────────────────────────────────────────────────
+# ── 9. 重新啟動 ────────────────────────────────────────────────────────────────
 info "重新啟動服務..."
 bash "${APP_DIR}/start.sh"
 
