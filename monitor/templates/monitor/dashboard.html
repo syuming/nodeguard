@@ -174,6 +174,20 @@
     </div>
   </div>
 </div>
+
+{% if profile.is_admin %}
+<div class="card mt-4">
+  <div class="card-header d-flex align-items-center justify-content-between">
+    <span><i class="bi bi-journal-text me-1" style="color:#f59e0b"></i>重複 IP 紀錄</span>
+    <a href="/logs/duplicate-ip/" class="btn btn-sm btn-outline-secondary">查看全部</a>
+  </div>
+  <div class="card-body p-0">
+    <div id="dup-log-body" style="font-size:.8rem;font-family:monospace;max-height:180px;overflow-y:auto">
+      <div class="text-center py-3" style="color:var(--text-secondary)">載入中...</div>
+    </div>
+  </div>
+</div>
+{% endif %}
 {% endblock %}
 
 {% block scripts %}
@@ -302,5 +316,22 @@ function toggleMonitor() {
 fetch("/api/monitor/status/")
   .then(r => r.json())
   .then(data => updateMonitorBtn(data.monitoring, data.interval));
+
+// 重複 IP log
+const dupLogBody = document.getElementById("dup-log-body");
+if (dupLogBody) {
+  fetch("/api/duplicate-ip-log/")
+    .then(r => r.json())
+    .then(d => {
+      if (!d.lines || d.lines.length === 0) {
+        dupLogBody.innerHTML = '<div class="text-center py-3" style="color:var(--text-secondary)">目前沒有重複 IP 紀錄</div>';
+      } else {
+        dupLogBody.innerHTML = d.lines.map(l =>
+          `<div style="padding:.3rem 1rem;border-bottom:1px solid var(--border-color);color:#94a3b8;white-space:pre-wrap;word-break:break-all">${l}</div>`
+        ).join('');
+      }
+    })
+    .catch(() => { dupLogBody.innerHTML = '<div class="text-center py-3 text-danger">載入失敗</div>'; });
+}
 </script>
 {% endblock %}

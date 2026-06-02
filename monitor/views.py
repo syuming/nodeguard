@@ -886,6 +886,33 @@ def api_changelog(request):
 
 
 @login_required
+def duplicate_ip_log(request):
+    profile = get_profile(request.user)
+    if not profile.is_admin:
+        raise Http404
+    log_file = Path(__file__).resolve().parent.parent / "duplicate_ip.log"
+    lines = []
+    if log_file.exists():
+        raw = log_file.read_text(encoding="utf-8").strip().splitlines()
+        lines = list(reversed(raw))  # 最新在前
+    return render(request, "monitor/duplicate_ip_log.html", {
+        "profile": profile, "lines": lines, "log_file": str(log_file),
+    })
+
+
+@login_required
+def api_duplicate_ip_log(request):
+    if not hasattr(request.user, "profile") or request.user.profile.role != "admin":
+        return JsonResponse({"error": "無權限"}, status=403)
+    log_file = Path(__file__).resolve().parent.parent / "duplicate_ip.log"
+    lines = []
+    if log_file.exists():
+        raw = log_file.read_text(encoding="utf-8").strip().splitlines()
+        lines = list(reversed(raw))[:20]  # 最新 20 筆
+    return JsonResponse({"lines": lines})
+
+
+@login_required
 def api_check_ip(request):
     ip = request.GET.get("ip", "").strip()
     if not ip:
