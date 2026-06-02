@@ -1,11 +1,14 @@
 import ipaddress
 import json
+import logging
 import re
 import subprocess
 import threading
 import time
 import urllib.request
 from pathlib import Path
+
+_dup_logger = logging.getLogger("nodeguard.duplicate_ip")
 from django.shortcuts import render, get_object_or_404, redirect
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth import authenticate, login, logout, update_session_auth_hash
@@ -309,7 +312,7 @@ def device_bulk_add(request):
             if (m := re.match(r'^name_(\d+)$', key))
         })
 
-        created, errors = [], []
+        created, errors, skipped = [], [], []
         for i in row_indices:
             name = request.POST.get(f"name_{i}", "").strip()
             ip   = request.POST.get(f"ip_{i}", "").strip()
@@ -317,6 +320,19 @@ def device_bulk_add(request):
                 continue
             if not name or not ip:
                 errors.append(f"第 {i} 筆：名稱和 IP 都必須填寫")
+                continue
+            existing = Device.objects.filter(ip_address=ip).select_related("company").first()
+            if existing:
+                skipped.append({
+                    "row": i, "name": name, "ip": ip,
+                    "existing_name": existing.name,
+                    "existing_company": existing.company.name if existing.company else "-",
+                })
+                _dup_logger.warning(
+                    "重複 IP 略過 | row=%d name=%s ip=%s existing=%s company=%s",
+                    i, name, ip, existing.name,
+                    existing.company.name if existing.company else "-",
+                )
                 continue
             try:
                 device = Device.objects.create(
@@ -341,7 +357,7 @@ def device_bulk_add(request):
 
         return render(request, "monitor/device_bulk_add.html", {
             "profile": profile, "companies": companies,
-            "created": created, "errors": errors, "done": True,
+            "created": created, "errors": errors, "skipped": skipped, "done": True,
         })
 
     return render(request, "monitor/device_bulk_add.html", {
@@ -867,6 +883,22 @@ def api_changelog(request):
         releases.append(current)
 
     return JsonResponse({"releases": releases})
+
+
+@login_required
+def api_check_ip(request):
+    ip = request.GET.get("ip", "").strip()
+    if not ip:
+        return JsonResponse({"exists": False})
+    device = Device.objects.filter(ip_address=ip).select_related("company").first()
+    if device:
+        return JsonResponse({
+            "exists": True,
+            "device_name": device.name,
+            "company": device.company.name if device.company else "-",
+            "device_id": device.id,
+        })
+    return JsonResponse({"exists": False})
 
 
 def _validate_ip(ip: str):

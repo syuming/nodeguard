@@ -143,3 +143,29 @@ LOGOUT_REDIRECT_URL = "/login/"
 # https://docs.djangoproject.com/en/5.2/ref/settings/#default-auto-field
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
+
+LOGGING = {
+    "version": 1,
+    "disable_existing_loggers": False,
+    "formatters": {
+        "timestamped": {
+            "format": "[{asctime}] {levelname} {message}",
+            "style": "{",
+        },
+    },
+    "handlers": {
+        "duplicate_ip_file": {
+            "class": "logging.FileHandler",
+            "filename": BASE_DIR / "duplicate_ip.log",
+            "formatter": "timestamped",
+            "encoding": "utf-8",
+        },
+    },
+    "loggers": {
+        "nodeguard.duplicate_ip": {
+            "handlers": ["duplicate_ip_file"],
+            "level": "WARNING",
+            "propagate": False,
+        },
+    },
+}

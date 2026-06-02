@@ -20,6 +20,18 @@
           </ul>
         </div>
         {% endif %}
+        {% if skipped %}
+        <div class="mb-3">
+          <div style="color:#f59e0b" class="mb-2"><i class="bi bi-skip-forward-fill me-1"></i>略過 {{ skipped|length }} 筆（IP 已存在）</div>
+          <ul class="list-unstyled mb-0" style="font-size:.9rem;color:#fcd34d">
+            {% for s in skipped %}
+            <li><code>{{ s.ip }}</code> — {{ s.name }}
+              <span class="text-muted ms-1">（已有設備：{{ s.existing_name }} / {{ s.existing_company }}）</span>
+            </li>
+            {% endfor %}
+          </ul>
+        </div>
+        {% endif %}
         {% if errors %}
         <div>
           <div class="text-danger mb-2"><i class="bi bi-exclamation-circle-fill me-1"></i>以下 {{ errors|length }} 筆發生錯誤</div>
