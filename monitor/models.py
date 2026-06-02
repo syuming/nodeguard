@@ -42,11 +42,11 @@ class UserProfile(models.Model):
 
 class Device(models.Model):
     DEVICE_TYPE_CHOICES = [
+        ("generic", "一般"),
         ("cisco_ios", "Cisco IOS"),
         ("cisco_nxos", "Cisco NX-OS"),
         ("juniper_junos", "Juniper JunOS"),
         ("linux", "Linux Server"),
-        ("generic", "Generic"),
     ]
 
     STATUS_CHOICES = [
@@ -63,7 +63,7 @@ class Device(models.Model):
     name = models.CharField(max_length=100, verbose_name="設備名稱")
     ip_address = models.GenericIPAddressField(verbose_name="IP 位址")
     device_type = models.CharField(
-        max_length=50, choices=DEVICE_TYPE_CHOICES, default="cisco_ios", verbose_name="設備類型"
+        max_length=50, choices=DEVICE_TYPE_CHOICES, default="generic", verbose_name="設備類型"
     )
     customer_name    = models.CharField(max_length=100, blank=True, verbose_name="客戶名稱")
     customer_id      = models.CharField(max_length=50, blank=True, verbose_name="客戶編號")

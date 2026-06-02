@@ -16,7 +16,22 @@
               {{ field.label }}
               {% if field.field.required %}<span class="text-danger ms-1" title="必填">*</span>{% endif %}
             </label>
+            {% if field.name == "ip_address" %}
+            <div class="input-group">
+              {{ field }}
+              <button type="button" class="btn btn-outline-secondary" onclick="runPing()" title="Ping 檢測"><i class="bi bi-reception-4 me-1"></i>Ping</button>
+              <button type="button" class="btn btn-outline-secondary" onclick="runTrace()" title="路由追蹤"><i class="bi bi-diagram-3 me-1"></i>Trace</button>
+            </div>
+            <div id="net-result" style="display:none;margin-top:.5rem;background:var(--bg-body);border-radius:8px;padding:.75rem 1rem;font-size:.8rem">
+              <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:.4rem">
+                <span id="net-result-title" style="font-weight:600;color:var(--text-primary)"></span>
+                <button type="button" onclick="document.getElementById('net-result').style.display='none'" style="background:none;border:none;color:var(--text-secondary);cursor:pointer;padding:0"><i class="bi bi-x-lg"></i></button>
+              </div>
+              <pre id="net-result-output" style="margin:0;white-space:pre-wrap;word-break:break-all;color:#94a3b8;max-height:240px;overflow-y:auto;font-size:.78rem"></pre>
+            </div>
+            {% else %}
             {{ field }}
+            {% endif %}
             {% if field.errors %}
               <div class="text-danger small mt-1">{{ field.errors|join:", " }}</div>
             {% endif %}
@@ -38,11 +53,62 @@
 
 {% block scripts %}
 <script>
-// Apply Bootstrap classes to form fields
 document.querySelectorAll("input, select, textarea").forEach(el => {
   if (el.tagName === "SELECT") el.classList.add("form-select");
   else el.classList.add("form-control");
 });
+
+function getIP() {
+  const ip = document.getElementById("id_ip_address").value.trim();
+  if (!ip) { alert("請先輸入 IP 位址"); return null; }
+  return ip;
+}
+
+function showResult(title, loading) {
+  const box = document.getElementById("net-result");
+  document.getElementById("net-result-title").textContent = title;
+  document.getElementById("net-result-output").textContent = loading;
+  box.style.display = "block";
+}
+
+function setResult(output, success) {
+  const pre = document.getElementById("net-result-output");
+  pre.textContent = output;
+  pre.style.color = success ? "#86efac" : "#fca5a5";
+}
+
+async function runPing() {
+  const ip = getIP(); if (!ip) return;
+  showResult(`Ping → ${ip}`, "檢測中...");
+  try {
+    const r = await fetch("/api/ping-check/", {
+      method: "POST",
+      headers: {"Content-Type": "application/json", "X-CSRFToken": getCookie("csrftoken")},
+      body: JSON.stringify({ip})
+    });
+    const d = await r.json();
+    setResult(d.error || d.output, d.success);
+  } catch { setResult("連線失敗", false); }
+}
+
+async function runTrace() {
+  const ip = getIP(); if (!ip) return;
+  showResult(`Traceroute → ${ip}`, "追蹤中，最多 60 秒...");
+  try {
+    const r = await fetch("/api/traceroute-check/", {
+      method: "POST",
+      headers: {"Content-Type": "application/json", "X-CSRFToken": getCookie("csrftoken")},
+      body: JSON.stringify({ip})
+    });
+    const d = await r.json();
+    setResult(d.error || d.output, d.success);
+  } catch { setResult("連線失敗", false); }
+}
+
+function getCookie(name) {
+  const v = document.cookie.match("(^|;)\\s*" + name + "\\s*=\\s*([^;]+)");
+  return v ? v.pop() : "";
+}
 </script>
 {% endblock %}
 {% endblock %}

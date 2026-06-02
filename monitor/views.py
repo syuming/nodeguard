@@ -1,3 +1,5 @@
+import ipaddress
+import json
 import subprocess
 import threading
 import time
@@ -743,3 +745,46 @@ def api_changelog(request):
         releases.append(current)
 
     return JsonResponse({"releases": releases})
+
+
+def _validate_ip(ip: str):
+    try:
+        ipaddress.ip_address(ip)
+        return True
+    except ValueError:
+        return False
+
+
+@login_required
+@require_POST
+def api_ping_check(request):
+    body = json.loads(request.body)
+    ip = body.get("ip", "").strip()
+    if not _validate_ip(ip):
+        return JsonResponse({"error": "IP 格式錯誤"}, status=400)
+    try:
+        result = subprocess.run(
+            ["ping", "-c", "4", "-W", "2", ip],
+            capture_output=True, text=True, timeout=15
+        )
+        return JsonResponse({"output": result.stdout or result.stderr, "success": result.returncode == 0})
+    except subprocess.TimeoutExpired:
+        return JsonResponse({"output": "逾時（超過 15 秒）", "success": False})
+
+
+@login_required
+@require_POST
+def api_traceroute_check(request):
+    body = json.loads(request.body)
+    ip = body.get("ip", "").strip()
+    if not _validate_ip(ip):
+        return JsonResponse({"error": "IP 格式錯誤"}, status=400)
+    for cmd in [["traceroute", "-m", "15", "-w", "2", ip], ["tracepath", "-m", "15", ip]]:
+        try:
+            result = subprocess.run(cmd, capture_output=True, text=True, timeout=60)
+            return JsonResponse({"output": result.stdout or result.stderr, "success": result.returncode == 0})
+        except FileNotFoundError:
+            continue
+        except subprocess.TimeoutExpired:
+            return JsonResponse({"output": "逾時（超過 60 秒）", "success": False})
+    return JsonResponse({"error": "找不到 traceroute 或 tracepath 指令"}, status=500)

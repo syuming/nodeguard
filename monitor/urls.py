@@ -43,4 +43,6 @@ urlpatterns = [
     path("api/system-update/", views.api_system_update, name="api_system_update"),
     path("api/system-restart/", views.api_system_restart, name="api_system_restart"),
     path("api/changelog/", views.api_changelog, name="api_changelog"),
+    path("api/ping-check/", views.api_ping_check, name="api_ping_check"),
+    path("api/traceroute-check/", views.api_traceroute_check, name="api_traceroute_check"),
 ]
