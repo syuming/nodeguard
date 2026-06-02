@@ -1,5 +1,8 @@
+import subprocess
 import threading
 import time
+import urllib.request
+from pathlib import Path
 from django.shortcuts import render, get_object_or_404, redirect
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth import authenticate, login, logout, update_session_auth_hash
@@ -647,3 +650,53 @@ def email_test(request):
     except Exception as e:
         messages.error(request, f"寄送失敗：{e}")
     return redirect("/settings/email/")
+
+
+# ── 版本更新 ──────────────────────────────────────────────────────────────────
+_VERSION_FILE = Path(__file__).resolve().parent.parent / "VERSION"
+_GITHUB_VERSION_URL = "https://raw.githubusercontent.com/syuming/nodeguard/main/VERSION"
+_ver_cache: dict = {"latest": None, "ts": 0.0}
+_VER_CACHE_TTL = 3600
+
+
+def _parse_ver(v: str) -> tuple:
+    try:
+        return tuple(int(x) for x in v.strip().split("."))
+    except Exception:
+        return (0,)
+
+
+@login_required
+def api_version_check(request):
+    current = _VERSION_FILE.read_text().strip()
+    now = time.time()
+    if _ver_cache["latest"] and now - _ver_cache["ts"] < _VER_CACHE_TTL:
+        latest = _ver_cache["latest"]
+    else:
+        try:
+            with urllib.request.urlopen(_GITHUB_VERSION_URL, timeout=5) as resp:
+                latest = resp.read().decode().strip()
+            _ver_cache["latest"] = latest
+            _ver_cache["ts"] = now
+        except Exception:
+            return JsonResponse({"current": current, "latest": None, "has_update": False})
+    has_update = _parse_ver(latest) > _parse_ver(current)
+    return JsonResponse({"current": current, "latest": latest, "has_update": has_update})
+
+
+@login_required
+@require_POST
+def api_system_update(request):
+    if not hasattr(request.user, "profile") or request.user.profile.role != "admin":
+        return JsonResponse({"error": "無權限"}, status=403)
+    script = Path(__file__).resolve().parent.parent / "update.sh"
+    if not script.exists():
+        return JsonResponse({"error": "找不到 update.sh"}, status=500)
+    subprocess.Popen(
+        ["bash", str(script)],
+        stdout=subprocess.DEVNULL,
+        stderr=subprocess.DEVNULL,
+        start_new_session=True,
+        close_fds=True,
+    )
+    return JsonResponse({"status": "started"})

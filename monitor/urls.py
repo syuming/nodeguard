@@ -38,4 +38,7 @@ urlpatterns = [
     path("api/device/<int:pk>/snmp-scan/", views.api_snmp_scan, name="api_snmp_scan"),
     path("api/device/<int:pk>/snmp-add-checks/", views.api_snmp_add_checks, name="api_snmp_add_checks"),
     path("api/checks/<int:check_pk>/edit/", views.api_monitor_check_edit, name="api_monitor_check_edit"),
+
+    path("api/version-check/", views.api_version_check, name="api_version_check"),
+    path("api/system-update/", views.api_system_update, name="api_system_update"),
 ]

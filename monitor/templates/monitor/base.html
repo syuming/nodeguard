@@ -105,7 +105,14 @@
 <nav class="navbar navbar-expand mb-4">
   <div class="container-fluid px-4">
     <a class="navbar-brand" href="/"><i class="bi bi-hdd-network me-2"></i>NodeGuard</a>
-    <span style="font-size:.7rem;color:#475569;margin-left:4px;margin-right:8px">v{{ app_version }}</span>
+    <span style="font-size:.7rem;color:#475569;margin-left:4px;margin-right:8px">
+      v{{ app_version }}
+      <span id="update-badge" style="display:none">
+        <span class="badge ms-1" style="background:#f59e0b;font-size:.65rem;cursor:pointer" onclick="document.getElementById('updateModal').style.display='flex'" title="有新版本可更新">
+          <i class="bi bi-arrow-up-circle-fill me-1"></i>有新版本
+        </span>
+      </span>
+    </span>
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#nav">
       <span class="navbar-toggler-icon"></span>
     </button>
@@ -181,5 +188,94 @@ function updateThemeBtn(theme) {
 })();
 </script>
 {% block scripts %}{% endblock %}
+
+{% if user.is_authenticated %}
+<!-- 更新 Modal -->
+<div id="updateModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:9999;align-items:center;justify-content:center">
+  <div style="background:var(--bg-card);border-radius:12px;padding:2rem;width:420px;max-width:90vw;box-shadow:0 20px 60px rgba(0,0,0,.4)">
+    <h5 style="margin:0 0 1rem;color:var(--text-primary)"><i class="bi bi-arrow-up-circle-fill me-2" style="color:#f59e0b"></i>系統更新</h5>
+    <div id="update-info" style="color:var(--text-secondary);font-size:.9rem;margin-bottom:1.25rem">
+      <div>目前版本：<strong id="cur-ver" style="color:var(--text-primary)">-</strong></div>
+      <div>最新版本：<strong id="new-ver" style="color:#22c55e">-</strong></div>
+    </div>
+    <div id="update-log" style="display:none;background:var(--bg-body);border-radius:8px;padding:1rem;margin-bottom:1rem;font-size:.8rem;color:#94a3b8;text-align:center">
+      <div class="spin" style="display:inline-block;margin-right:.5rem">⟳</div>
+      <span id="update-log-text">更新中，請稍候...</span>
+    </div>
+    <div id="update-actions" style="display:flex;gap:.75rem;justify-content:flex-end">
+      <button onclick="document.getElementById('updateModal').style.display='none'" class="btn btn-sm btn-outline-secondary" id="btn-cancel">取消</button>
+      {% if user.profile.role == "admin" %}
+      <button onclick="doUpdate()" class="btn btn-sm btn-warning" id="btn-update"><i class="bi bi-arrow-repeat me-1"></i>立即更新</button>
+      {% endif %}
+    </div>
+  </div>
+</div>
+
+<script>
+(function() {
+  fetch('/api/version-check/')
+    .then(r => r.json())
+    .then(d => {
+      if (d.has_update) {
+        document.getElementById('update-badge').style.display = 'inline';
+        document.getElementById('cur-ver').textContent = d.current;
+        document.getElementById('new-ver').textContent = d.latest;
+      }
+    })
+    .catch(() => {});
+})();
+
+function doUpdate() {
+  const btnUpdate = document.getElementById('btn-update');
+  const btnCancel = document.getElementById('btn-cancel');
+  const log = document.getElementById('update-log');
+  const logText = document.getElementById('update-log-text');
+  const actions = document.getElementById('update-actions');
+
+  btnUpdate.disabled = true;
+  btnCancel.disabled = true;
+  log.style.display = 'block';
+  logText.textContent = '正在啟動更新...';
+
+  fetch('/api/system-update/', {method:'POST', headers:{'X-CSRFToken': getCookie('csrftoken')}})
+    .then(r => r.json())
+    .then(() => {
+      logText.textContent = '更新中，服務即將重啟，請稍候...';
+      waitForRestart();
+    })
+    .catch(() => {
+      logText.textContent = '啟動更新失敗，請手動執行 update.sh';
+      btnCancel.disabled = false;
+    });
+}
+
+async function waitForRestart() {
+  const logText = document.getElementById('update-log-text');
+  await new Promise(r => setTimeout(r, 5000));
+  let attempts = 0;
+  while (attempts < 60) {
+    await new Promise(r => setTimeout(r, 2000));
+    try {
+      const r = await fetch('/api/monitor/status/');
+      if (r.ok) {
+        logText.textContent = '更新完成！正在重新載入...';
+        await new Promise(r => setTimeout(r, 1000));
+        location.reload();
+        return;
+      }
+    } catch {}
+    attempts++;
+    const dots = '.'.repeat((attempts % 3) + 1);
+    logText.textContent = `更新中，等待服務重啟${dots}`;
+  }
+  document.getElementById('update-log-text').textContent = '重啟逾時，請手動重新整理頁面';
+}
+
+function getCookie(name) {
+  const v = document.cookie.match('(^|;)\\s*' + name + '\\s*=\\s*([^;]+)');
+  return v ? v.pop() : '';
+}
+</script>
+{% endif %}
 </body>
 </html>
