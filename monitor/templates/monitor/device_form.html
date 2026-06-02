@@ -22,9 +22,12 @@
               <button type="button" class="btn btn-outline-secondary" onclick="runPing()" title="Ping 檢測"><i class="bi bi-reception-4 me-1"></i>Ping</button>
               <button type="button" class="btn btn-outline-secondary" onclick="runTrace()" title="路由追蹤"><i class="bi bi-diagram-3 me-1"></i>Trace</button>
             </div>
-            <div id="ip-exists-warn" style="display:none;margin-top:.4rem;font-size:.82rem;color:#fbbf24">
-              <i class="bi bi-exclamation-triangle-fill me-1"></i>
+            <div id="ip-exists-warn" style="display:none;margin-top:.4rem;font-size:.82rem;color:#ef4444">
+              <i class="bi bi-x-circle-fill me-1"></i>
               <span id="ip-exists-msg"></span>
+            </div>
+            <div id="ip-ok-hint" style="display:none;margin-top:.4rem;font-size:.82rem;color:#22c55e">
+              <i class="bi bi-check-circle-fill me-1"></i>IP 可使用
             </div>
             <div id="net-result" style="display:none;margin-top:.5rem;background:var(--bg-body);border-radius:8px;padding:.75rem 1rem;font-size:.8rem">
               <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:.4rem">
@@ -46,7 +49,7 @@
           {% endfor %}
           <p class="text-muted small mt-1"><span class="text-danger">*</span> 為必填欄位</p>
           <div class="d-flex gap-2">
-            <button type="submit" class="btn btn-primary"><i class="bi bi-check2 me-1"></i>儲存</button>
+            <button type="submit" id="save-btn" class="btn btn-primary" disabled><i class="bi bi-check2 me-1"></i>儲存</button>
             <a href="/" class="btn btn-outline-secondary">取消</a>
           </div>
         </form>
@@ -57,10 +60,17 @@
 
 {% block scripts %}
 <script>
+const DEVICE_ID = {{ device_id|default:"null" }};
+
 document.querySelectorAll("input, select, textarea").forEach(el => {
   if (el.tagName === "SELECT") el.classList.add("form-select");
   else el.classList.add("form-control");
 });
+
+function getCompanyId() {
+  const el = document.getElementById("id_company");
+  return el ? el.value : "";
+}
 
 function getIP() {
   const ip = document.getElementById("id_ip_address").value.trim();
@@ -68,42 +78,100 @@ function getIP() {
   return ip;
 }
 
-// IP 即時查重
+// ── 儲存按鈕啟用邏輯 ─────────────────────────────────────────────────────────
+let _ipValid = false;
 let _ipCheckTimer = null;
-document.getElementById("id_ip_address")?.addEventListener("input", function() {
-  clearTimeout(_ipCheckTimer);
-  const ip = this.value.trim();
-  const warn = document.getElementById("ip-exists-warn");
-  if (!ip) { warn.style.display = "none"; return; }
-  _ipCheckTimer = setTimeout(() => {
-    fetch(`/api/check-ip/?ip=${encodeURIComponent(ip)}`)
-      .then(r => r.json())
-      .then(d => {
-        if (d.exists) {
-          document.getElementById("ip-exists-msg").textContent =
-            `此 IP 已存在：${d.device_name}（${d.company}）`;
-          warn.style.display = "block";
-        } else {
-          warn.style.display = "none";
-        }
-      })
-      .catch(() => { warn.style.display = "none"; });
-  }, 500);
-});
 
-function showResult(title, loading) {
-  const box = document.getElementById("net-result");
-  document.getElementById("net-result-title").textContent = title;
-  document.getElementById("net-result-output").textContent = loading;
-  box.style.display = "block";
+function updateSaveBtn() {
+  const name = document.getElementById("id_name")?.value.trim();
+  const ip   = document.getElementById("id_ip_address")?.value.trim();
+  document.getElementById("save-btn").disabled = !(name && ip && _ipValid);
 }
 
+function checkIPDuplicate() {
+  const ip        = document.getElementById("id_ip_address")?.value.trim();
+  const companyId = getCompanyId();
+  const warn      = document.getElementById("ip-exists-warn");
+  const ok        = document.getElementById("ip-ok-hint");
+
+  if (!ip) {
+    warn.style.display = "none";
+    ok.style.display   = "none";
+    _ipValid = false;
+    updateSaveBtn();
+    return;
+  }
+
+  // 沒選公司時，只要有 IP 就允許
+  if (!companyId) {
+    warn.style.display = "none";
+    ok.style.display   = "none";
+    _ipValid = true;
+    updateSaveBtn();
+    return;
+  }
+
+  let url = `/api/check-ip/?ip=${encodeURIComponent(ip)}&company_id=${encodeURIComponent(companyId)}`;
+  if (DEVICE_ID) url += `&exclude_id=${DEVICE_ID}`;
+
+  fetch(url)
+    .then(r => r.json())
+    .then(d => {
+      if (d.exists) {
+        document.getElementById("ip-exists-msg").textContent = `此 IP 在同公司已存在：${d.device_name}`;
+        warn.style.display = "block";
+        ok.style.display   = "none";
+        _ipValid = false;
+      } else {
+        warn.style.display = "none";
+        ok.style.display   = "block";
+        _ipValid = true;
+      }
+      updateSaveBtn();
+    })
+    .catch(() => {
+      warn.style.display = "none";
+      ok.style.display   = "none";
+      _ipValid = true;  // API 失敗時不阻擋
+      updateSaveBtn();
+    });
+}
+
+document.getElementById("id_ip_address")?.addEventListener("input", function() {
+  clearTimeout(_ipCheckTimer);
+  _ipValid = false;
+  updateSaveBtn();
+  _ipCheckTimer = setTimeout(checkIPDuplicate, 500);
+});
+
+document.getElementById("id_name")?.addEventListener("input", updateSaveBtn);
+document.getElementById("id_company")?.addEventListener("change", () => {
+  _ipValid = false;
+  clearTimeout(_ipCheckTimer);
+  _ipCheckTimer = setTimeout(checkIPDuplicate, 200);
+});
+
+// 頁面載入時初始化（編輯模式可能已有值）
+window.addEventListener("DOMContentLoaded", () => {
+  const ip = document.getElementById("id_ip_address")?.value.trim();
+  if (ip) {
+    checkIPDuplicate();
+  } else {
+    updateSaveBtn();
+  }
+});
+
+// ── Ping / Trace ──────────────────────────────────────────────────────────────
+function showResult(title, loading) {
+  document.getElementById("net-result-title").textContent = title;
+  document.getElementById("net-result-output").textContent = loading;
+  document.getElementById("net-result").style.display = "block";
+}
 function setResult(output, success) {
   const pre = document.getElementById("net-result-output");
   pre.textContent = output;
   pre.style.color = success ? "#86efac" : "#fca5a5";
 }
-
 async function runPing() {
   const ip = getIP(); if (!ip) return;
   showResult(`Ping → ${ip}`, "檢測中...");
@@ -117,7 +185,6 @@ async function runPing() {
     setResult(d.error || d.output, d.success);
   } catch { setResult("連線失敗", false); }
 }
-
 async function runTrace() {
   const ip = getIP(); if (!ip) return;
   showResult(`Traceroute → ${ip}`, "追蹤中，最多 60 秒...");
@@ -131,7 +198,6 @@ async function runTrace() {
     setResult(d.error || d.output, d.success);
   } catch { setResult("連線失敗", false); }
 }
-
 function getCookie(name) {
   const v = document.cookie.match("(^|;)\\s*" + name + "\\s*=\\s*([^;]+)");
   return v ? v.pop() : "";

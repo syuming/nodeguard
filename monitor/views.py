@@ -283,7 +283,7 @@ def device_add(request):
             return redirect(f"/company/{company_pk.pk}/")
         return redirect("/")
     return render(request, "monitor/device_form.html", {
-        "form": form, "title": "新增設備", "profile": profile
+        "form": form, "title": "新增設備", "profile": profile, "device_id": None,
     })
 
 
@@ -378,7 +378,7 @@ def device_edit(request, pk):
         messages.success(request, "設備已更新")
         return redirect(f"/device/{pk}/")
     return render(request, "monitor/device_form.html", {
-        "form": form, "title": "編輯設備", "profile": profile
+        "form": form, "title": "編輯設備", "profile": profile, "device_id": pk,
     })
 
 
@@ -914,17 +914,17 @@ def api_duplicate_ip_log(request):
 
 @login_required
 def api_check_ip(request):
-    ip = request.GET.get("ip", "").strip()
-    if not ip:
+    ip         = request.GET.get("ip", "").strip()
+    company_id = request.GET.get("company_id", "").strip()
+    exclude_id = request.GET.get("exclude_id", "").strip()
+    if not ip or not company_id:
         return JsonResponse({"exists": False})
-    device = Device.objects.filter(ip_address=ip).select_related("company").first()
+    qs = Device.objects.filter(ip_address=ip, company_id=company_id)
+    if exclude_id:
+        qs = qs.exclude(pk=exclude_id)
+    device = qs.select_related("company").first()
     if device:
-        return JsonResponse({
-            "exists": True,
-            "device_name": device.name,
-            "company": device.company.name if device.company else "-",
-            "device_id": device.id,
-        })
+        return JsonResponse({"exists": True, "device_name": device.name})
     return JsonResponse({"exists": False})
 
 
