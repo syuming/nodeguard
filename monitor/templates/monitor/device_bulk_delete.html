@@ -1,0 +1,157 @@
+{% extends "monitor/base.html" %}
+{% block title %}批量刪除設備 - NodeGuard{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+  <div class="col-10">
+
+    <div class="d-flex align-items-center justify-content-between mb-4">
+      <h4 class="mb-0" style="color:#f1f5f9"><i class="bi bi-trash me-2" style="color:#ef4444"></i>批量刪除設備</h4>
+    </div>
+
+    <!-- 搜尋條件 -->
+    <div class="card mb-4">
+      <div class="card-header">搜尋條件</div>
+      <div class="card-body">
+        <form method="get" class="d-flex flex-wrap gap-3 align-items-end">
+          <div>
+            <label class="form-label mb-1" style="font-size:.85rem">斷線超過</label>
+            <div class="input-group" style="width:220px">
+              <input type="number" name="duration" class="form-control" value="{{ duration }}" placeholder="數字" min="1" step="1">
+              <select name="unit" class="form-select" style="max-width:90px">
+                <option value="hours" {% if unit == "hours" %}selected{% endif %}>小時</option>
+                <option value="days"  {% if unit == "days"  %}selected{% endif %}>天</option>
+              </select>
+            </div>
+          </div>
+          {% if profile.is_admin %}
+          <div>
+            <label class="form-label mb-1" style="font-size:.85rem">公司篩選</label>
+            <select name="company" class="form-select" style="width:200px">
+              <option value="">— 全部 —</option>
+              {% for c in companies %}
+              <option value="{{ c.id }}" {% if company_id == c.id|stringformat:"s" %}selected{% endif %}>{{ c.name }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          {% endif %}
+          <button type="submit" class="btn btn-primary"><i class="bi bi-search me-1"></i>搜尋</button>
+        </form>
+      </div>
+    </div>
+
+    <!-- 搜尋結果 -->
+    {% if devices is not None %}
+    {% if devices %}
+    <form method="post" id="delete-form">
+      {% csrf_token %}
+      <input type="hidden" name="confirm_delete" value="1">
+
+      <div class="d-flex align-items-center justify-content-between mb-2">
+        <div style="font-size:.9rem;color:var(--text-secondary)">
+          找到 <strong style="color:#ef4444">{{ devices|length }}</strong> 台設備符合條件
+        </div>
+        <div class="d-flex gap-2">
+          <button type="button" onclick="toggleAll(true)"  class="btn btn-sm btn-outline-secondary">全選</button>
+          <button type="button" onclick="toggleAll(false)" class="btn btn-sm btn-outline-secondary">取消全選</button>
+          <button type="button" onclick="confirmDelete()" class="btn btn-sm btn-danger" id="delete-btn" disabled>
+            <i class="bi bi-trash me-1"></i>刪除已選（<span id="selected-count">0</span> 台）
+          </button>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-body p-0">
+          <div class="table-responsive">
+            <table class="table table-hover mb-0">
+              <thead>
+                <tr>
+                  <th style="width:40px"><input type="checkbox" id="chk-all" onchange="toggleAll(this.checked)"></th>
+                  <th>設備名稱</th>
+                  <th>IP 位址</th>
+                  {% if profile.is_admin %}<th>公司</th>{% endif %}
+                  <th>斷線時間</th>
+                  <th>已離線</th>
+                </tr>
+              </thead>
+              <tbody>
+                {% for d in devices %}
+                {% with dt=d.downtimes.filter.first %}
+                <tr>
+                  <td><input type="checkbox" name="device_ids" value="{{ d.id }}" class="row-chk" onchange="updateCount()"></td>
+                  <td><a href="/device/{{ d.id }}/" style="color:#38bdf8" target="_blank">{{ d.name }}</a></td>
+                  <td><code style="color:#94a3b8">{{ d.ip_address }}</code></td>
+                  {% if profile.is_admin %}<td style="font-size:.85rem;color:var(--text-secondary)">{{ d.company.name|default:"-" }}</td>{% endif %}
+                  <td style="font-size:.85rem;color:#fca5a5">
+                    {% with dt=d.downtimes.first %}
+                    {{ dt.started_at|date:"Y-m-d H:i" }}
+                    {% endwith %}
+                  </td>
+                  <td style="font-size:.85rem;color:#fca5a5">
+                    {% with dt=d.downtimes.first %}
+                    {% if dt %}{{ dt.duration_display }}{% else %}-{% endif %}
+                    {% endwith %}
+                  </td>
+                </tr>
+                {% endwith %}
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </form>
+
+    {% else %}
+    <div class="card">
+      <div class="card-body text-center py-5">
+        <i class="bi bi-check-circle display-6 d-block mb-2" style="color:#22c55e"></i>
+        <div style="color:var(--text-secondary)">沒有符合條件的設備</div>
+      </div>
+    </div>
+    {% endif %}
+    {% endif %}
+
+  </div>
+</div>
+
+<!-- 確認 Modal -->
+<div id="confirmModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:9999;align-items:center;justify-content:center">
+  <div style="background:var(--bg-card);border-radius:12px;padding:2rem;width:380px;max-width:90vw;box-shadow:0 20px 60px rgba(0,0,0,.4)">
+    <h5 style="margin:0 0 1rem;color:#ef4444"><i class="bi bi-exclamation-triangle-fill me-2"></i>確認刪除</h5>
+    <p style="color:var(--text-secondary);font-size:.9rem;margin-bottom:1.5rem">
+      確定要刪除已選的 <strong id="modal-count" style="color:#ef4444"></strong> 台設備嗎？<br>
+      <span style="font-size:.8rem;color:#94a3b8">此操作無法復原，設備的所有監控記錄也會一併刪除。</span>
+    </p>
+    <div style="display:flex;gap:.75rem;justify-content:flex-end">
+      <button onclick="document.getElementById('confirmModal').style.display='none'" class="btn btn-sm btn-outline-secondary">取消</button>
+      <button onclick="document.getElementById('delete-form').submit()" class="btn btn-sm btn-danger"><i class="bi bi-trash me-1"></i>確認刪除</button>
+    </div>
+  </div>
+</div>
+
+{% block scripts %}
+<script>
+function toggleAll(checked) {
+  document.querySelectorAll(".row-chk").forEach(c => c.checked = checked);
+  document.getElementById("chk-all").checked = checked;
+  updateCount();
+}
+
+function updateCount() {
+  const n = document.querySelectorAll(".row-chk:checked").length;
+  document.getElementById("selected-count").textContent = n;
+  document.getElementById("delete-btn").disabled = n === 0;
+  const all = document.querySelectorAll(".row-chk").length;
+  document.getElementById("chk-all").checked = n === all && all > 0;
+}
+
+function confirmDelete() {
+  const n = document.querySelectorAll(".row-chk:checked").length;
+  if (n === 0) return;
+  document.getElementById("modal-count").textContent = n;
+  document.getElementById("confirmModal").style.display = "flex";
+}
+</script>
+{% endblock %}
+{% endblock %}

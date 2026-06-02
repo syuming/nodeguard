@@ -380,6 +380,55 @@ def device_delete(request, pk):
     return redirect("/")
 
 
+@login_required
+def device_bulk_delete(request):
+    from django.utils import timezone as tz
+    from datetime import timedelta
+    profile = get_profile(request.user)
+    companies = Company.objects.all().order_by("name") if profile.is_admin else None
+
+    if request.method == "POST" and "confirm_delete" in request.POST:
+        ids = request.POST.getlist("device_ids")
+        if ids:
+            devices = get_visible_devices(request.user).filter(pk__in=ids)
+            count = devices.count()
+            devices.delete()
+            messages.success(request, f"已刪除 {count} 台設備")
+        return redirect("/device/bulk-delete/")
+
+    # 搜尋條件
+    duration = request.GET.get("duration", "").strip()
+    unit     = request.GET.get("unit", "hours")
+    company_id = request.GET.get("company", "")
+    devices = None
+
+    if duration:
+        try:
+            hours = float(duration) * (24 if unit == "days" else 1)
+            threshold = tz.now() - timedelta(hours=hours)
+            # 目前離線且斷線開始時間超過 threshold
+            offline_since_ids = DowntimeRecord.objects.filter(
+                recovered_at__isnull=True,
+                started_at__lte=threshold,
+            ).values_list("device_id", flat=True)
+            devices = get_visible_devices(request.user).filter(
+                pk__in=offline_since_ids, status="offline"
+            ).select_related("company")
+            if company_id:
+                devices = devices.filter(company_id=company_id)
+        except ValueError:
+            messages.error(request, "請輸入有效的數字")
+
+    return render(request, "monitor/device_bulk_delete.html", {
+        "profile": profile,
+        "companies": companies,
+        "devices": devices,
+        "duration": duration,
+        "unit": unit,
+        "company_id": company_id,
+    })
+
+
 # ── Company CRUD（僅系統管理者） ───────────────────────────────────────────────
 
 @login_required
