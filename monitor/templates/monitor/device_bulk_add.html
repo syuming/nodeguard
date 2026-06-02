@@ -61,13 +61,14 @@
 
           {% if profile.is_admin %}
           <div class="mb-4">
-            <label class="form-label">所屬公司</label>
-            <select name="company" class="form-select" style="max-width:320px">
-              <option value="">— 不指定 —</option>
+            <label class="form-label">所屬公司 <span class="text-danger">*</span></label>
+            <select name="company" class="form-select {% if company_error %}is-invalid{% endif %}" style="max-width:320px">
+              <option value="">— 請選擇公司 —</option>
               {% for c in companies %}
               <option value="{{ c.id }}">{{ c.name }}</option>
               {% endfor %}
             </select>
+            {% if company_error %}<div class="invalid-feedback">{{ company_error }}</div>{% endif %}
           </div>
           {% endif %}
 
@@ -125,6 +126,48 @@
 let maxRow = 10;
 const tbody = document.querySelector("tbody");
 
+const dupTimers = {};
+
+function isValidIP(ip) {
+  if (!ip) return true;
+  const v4 = /^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$/.exec(ip);
+  if (v4) return v4.slice(1).every(n => parseInt(n) <= 255);
+  return /^[\da-fA-F:]+$/.test(ip) && ip.includes(":");
+}
+
+function setIPError(ipEl, msg) {
+  ipEl.classList.add("is-invalid");
+  ipEl.title = msg;
+}
+
+function clearIPError(ipEl) {
+  ipEl.classList.remove("is-invalid");
+  ipEl.removeAttribute("title");
+}
+
+function getSelectedCompany() {
+  return document.querySelector("select[name='company']")?.value || "";
+}
+
+function validateAndCheck(ipEl) {
+  const val = ipEl.value.trim();
+  const row = ipEl.dataset.row;
+  clearTimeout(dupTimers[row]);
+  if (!val) { clearIPError(ipEl); return; }
+  if (!isValidIP(val)) { setIPError(ipEl, "IP 格式不正確"); return; }
+  clearIPError(ipEl);
+  const cid = getSelectedCompany();
+  if (!cid) return;
+  dupTimers[row] = setTimeout(async () => {
+    try {
+      const r = await fetch(`/api/check-ip/?ip=${encodeURIComponent(val)}&company_id=${cid}`);
+      const d = await r.json();
+      if (ipEl.value.trim() === val && d.exists)
+        setIPError(ipEl, `IP 已存在（${d.device_name}）`);
+    } catch {}
+  }, 400);
+}
+
 function createRow(n) {
   const tr = document.createElement("tr");
   tr.id = `bulk-row-${n}`;
@@ -146,23 +189,21 @@ function ensureRow(n) {
 
 function fillRow(n, name, ip) {
   ensureRow(n);
-  const nameEl = document.querySelector(`input[name="name_${n}"]`);
-  const ipEl   = document.querySelector(`input[name="ip_${n}"]`);
+  const nameEl  = document.querySelector(`input[name="name_${n}"]`);
+  const ipEl    = document.querySelector(`input[name="ip_${n}"]`);
   const pingBtn = document.querySelector(`.ping-btn[data-row="${n}"]`);
   if (nameEl && name !== undefined) nameEl.value = name;
   if (ipEl   && ip   !== undefined) {
     ipEl.value = ip;
+    validateAndCheck(ipEl);
     if (pingBtn) pingBtn.style.display = ip ? "" : "none";
   }
 }
 
 function handlePaste(e) {
   const text = e.clipboardData.getData("text");
-  // 只有含 Tab 或多行才攔截（Excel 格式）
-  if (!text.includes("\t") && !text.split(/\r?\n/).filter(l => l.trim()).length > 1) return;
   if (!text.includes("\t") && !text.includes("\n")) return;
   e.preventDefault();
-
   const startRow = parseInt(e.target.name.split("_")[1]);
   const lines = text.trim().split(/\r?\n/).filter(l => l.trim());
   lines.forEach((line, i) => {
@@ -171,14 +212,25 @@ function handlePaste(e) {
   });
 }
 
+function handleIPPaste(e) {
+  const ipEl = e.target;
+  setTimeout(() => {
+    validateAndCheck(ipEl);
+    const pingBtn = document.querySelector(`.ping-btn[data-row="${ipEl.dataset.row}"]`);
+    if (pingBtn) pingBtn.style.display = ipEl.value.trim() ? "" : "none";
+  }, 0);
+}
+
 function bindRow(n) {
   const ipEl   = document.querySelector(`input[name="ip_${n}"]`);
   const nameEl = document.querySelector(`input[name="name_${n}"]`);
   const pingBtn = document.querySelector(`.ping-btn[data-row="${n}"]`);
 
   ipEl?.addEventListener("input", () => {
+    validateAndCheck(ipEl);
     if (pingBtn) pingBtn.style.display = ipEl.value.trim() ? "" : "none";
   });
+  ipEl?.addEventListener("paste", handleIPPaste);
   nameEl?.addEventListener("paste", handlePaste);
 
   pingBtn?.addEventListener("click", async () => {
@@ -205,6 +257,16 @@ function bindRow(n) {
 
 // 綁定初始 10 列
 for (let i = 1; i <= 10; i++) bindRow(i);
+
+// 送出前擋住無效 IP
+document.querySelector("form")?.addEventListener("submit", function(e) {
+  const invalids = this.querySelectorAll("input[name^='ip_'].is-invalid");
+  if (invalids.length) {
+    e.preventDefault();
+    invalids[0].focus();
+    invalids[0].scrollIntoView({behavior:"smooth", block:"center"});
+  }
+});
 
 function getCookie(name) {
   const v = document.cookie.match("(^|;)\\s*" + name + "\\s*=\\s*([^;]+)");

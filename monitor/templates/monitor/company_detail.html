@@ -59,9 +59,14 @@
 <div class="d-flex justify-content-between align-items-center mb-3">
   <h5 class="mb-0"><i class="bi bi-list-ul me-2"></i>設備列表</h5>
   {% if profile.is_admin %}
-  <a href="/device/add/?company={{ company.pk }}" class="btn btn-sm btn-primary">
-    <i class="bi bi-plus me-1"></i>新增設備
-  </a>
+  <div class="d-flex gap-2">
+    <a href="/device/add/?company={{ company.pk }}" class="btn btn-sm btn-outline-primary">
+      <i class="bi bi-plus me-1"></i>新增設備
+    </a>
+    <button type="button" class="btn btn-sm btn-primary" onclick="toggleBulkAdd()">
+      <i class="bi bi-hdd-network me-1"></i>批量新增
+    </button>
+  </div>
   {% endif %}
 </div>
 
@@ -125,6 +130,85 @@
     </div>
   </div>
 </div>
+{% if profile.is_admin %}
+<!-- 批量新增區塊 -->
+<div id="bulk-add-section" class="mt-4" style="display:none">
+  <div class="card">
+    <div class="card-header d-flex align-items-center justify-content-between">
+      <span><i class="bi bi-hdd-network me-2"></i>批量新增設備 — <span style="color:#38bdf8">{{ company.name }}</span></span>
+      <a href="/device/add/?company={{ company.pk }}" class="btn btn-sm btn-outline-secondary">單筆新增</a>
+    </div>
+    <div class="card-body">
+
+      {% if bulk_created is not None %}
+      <!-- 新增結果 -->
+      {% if bulk_created %}
+      <div class="alert alert-success py-2 mb-2">
+        <i class="bi bi-check-circle-fill me-1"></i>成功新增 {{ bulk_created|length }} 台設備：
+        {% for d in bulk_created %}
+        <a href="/device/{{ d.id }}/" style="color:#86efac">{{ d.name }}</a>{% if not forloop.last %}、{% endif %}
+        {% endfor %}
+      </div>
+      {% endif %}
+      {% if bulk_skipped %}
+      <div class="alert py-2 mb-2" style="background:#422006;border-color:#92400e;color:#fcd34d">
+        <i class="bi bi-skip-forward-fill me-1"></i>略過 {{ bulk_skipped|length }} 筆（IP 已存在）：
+        {% for s in bulk_skipped %}<code>{{ s.ip }}</code>（{{ s.existing_name }}）{% if not forloop.last %}、{% endif %}{% endfor %}
+      </div>
+      {% endif %}
+      {% if bulk_errors %}
+      <div class="alert alert-danger py-2 mb-2">
+        <i class="bi bi-exclamation-circle-fill me-1"></i>
+        {% for e in bulk_errors %}<div>{{ e }}</div>{% endfor %}
+      </div>
+      {% endif %}
+      {% endif %}
+
+      <p class="text-muted mb-3" style="font-size:.875rem">空白列自動略過，可從 Excel 貼上（名稱＋IP 兩欄）。</p>
+      <form method="post" action="#bulk-add-section">
+        {% csrf_token %}
+        <div class="table-responsive">
+          <table class="table table-hover align-middle mb-3">
+            <thead>
+              <tr>
+                <th style="width:40px">#</th>
+                <th>設備名稱 <span class="text-danger">*</span></th>
+                <th>IP 位址 <span class="text-danger">*</span></th>
+                <th style="width:90px"></th>
+              </tr>
+            </thead>
+            <tbody id="bulk-tbody">
+              {% for i in row_range %}
+              <tr id="brow-{{ i }}">
+                <td class="text-muted">{{ i }}</td>
+                <td><input type="text" name="name_{{ i }}" class="form-control form-control-sm" placeholder="設備名稱"></td>
+                <td><input type="text" name="ip_{{ i }}" class="form-control form-control-sm bulk-ip" placeholder="192.168.1.1" data-row="{{ i }}"></td>
+                <td>
+                  <button type="button" class="btn btn-sm btn-outline-secondary bulk-ping-btn" data-row="{{ i }}" title="Ping 測試" style="display:none">
+                    <i class="bi bi-reception-4"></i>
+                  </button>
+                </td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+
+        <div id="bulk-ping-result" style="display:none;background:var(--bg-body);border-radius:8px;padding:.75rem 1rem;margin-bottom:1rem;font-size:.8rem">
+          <div style="display:flex;justify-content:space-between;margin-bottom:.4rem">
+            <span id="bulk-ping-title" style="font-weight:600;color:var(--text-primary)"></span>
+            <button type="button" onclick="document.getElementById('bulk-ping-result').style.display='none'" style="background:none;border:none;color:var(--text-secondary);cursor:pointer;padding:0"><i class="bi bi-x-lg"></i></button>
+          </div>
+          <pre id="bulk-ping-output" style="margin:0;white-space:pre-wrap;word-break:break-all;color:#94a3b8;max-height:180px;overflow-y:auto;font-size:.78rem"></pre>
+        </div>
+
+        <button type="submit" class="btn btn-primary"><i class="bi bi-check2 me-1"></i>批量新增</button>
+      </form>
+    </div>
+  </div>
+</div>
+{% endif %}
+
 {% endblock %}
 
 {% block scripts %}
@@ -175,5 +259,148 @@ function pollStatus() {
 }
 pollStatus();
 setInterval(pollStatus, 10000);
+
+function toggleBulkAdd() {
+  const el = document.getElementById("bulk-add-section");
+  if (!el) return;
+  const opening = el.style.display === "none";
+  el.style.display = opening ? "" : "none";
+  if (opening) el.scrollIntoView({behavior:"smooth", block:"start"});
+}
+
+// ── 批量新增 JS ──
+(function() {
+  let maxBulkRow = 10;
+  const tbody = document.getElementById("bulk-tbody");
+  if (!tbody) return;
+
+  const dupTimers = {};
+
+  function isValidIP(ip) {
+    if (!ip) return true;
+    const v4 = /^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$/.exec(ip);
+    if (v4) return v4.slice(1).every(n => parseInt(n) <= 255);
+    return /^[\da-fA-F:]+$/.test(ip) && ip.includes(":");
+  }
+
+  function setIPError(ipEl, msg) {
+    ipEl.classList.add("is-invalid");
+    ipEl.title = msg;
+  }
+
+  function clearIPError(ipEl) {
+    ipEl.classList.remove("is-invalid");
+    ipEl.removeAttribute("title");
+  }
+
+  function validateAndCheck(ipEl) {
+    const val = ipEl.value.trim();
+    const row = ipEl.dataset.row;
+    clearTimeout(dupTimers[row]);
+    if (!val) { clearIPError(ipEl); return; }
+    if (!isValidIP(val)) { setIPError(ipEl, "IP 格式不正確"); return; }
+    clearIPError(ipEl);
+    dupTimers[row] = setTimeout(async () => {
+      try {
+        const r = await fetch(`/api/check-ip/?ip=${encodeURIComponent(val)}&company_id=${COMPANY_ID}`);
+        const d = await r.json();
+        if (ipEl.value.trim() === val && d.exists)
+          setIPError(ipEl, `IP 已存在（${d.device_name}）`);
+      } catch {}
+    }, 400);
+  }
+
+  function createBulkRow(n) {
+    const tr = document.createElement("tr");
+    tr.id = `brow-${n}`;
+    tr.innerHTML = `
+      <td class="text-muted">${n}</td>
+      <td><input type="text" name="name_${n}" class="form-control form-control-sm" placeholder="設備名稱"></td>
+      <td><input type="text" name="ip_${n}" class="form-control form-control-sm bulk-ip" placeholder="192.168.1.1" data-row="${n}"></td>
+      <td><button type="button" class="btn btn-sm btn-outline-secondary bulk-ping-btn" data-row="${n}" title="Ping 測試" style="display:none"><i class="bi bi-reception-4"></i></button></td>`;
+    tbody.appendChild(tr);
+    bindBulkRow(n);
+  }
+
+  function ensureBulkRow(n) {
+    if (!document.getElementById(`brow-${n}`)) {
+      createBulkRow(n);
+      if (n > maxBulkRow) maxBulkRow = n;
+    }
+  }
+
+  function handleBulkPaste(e) {
+    const text = e.clipboardData.getData("text");
+    if (!text.includes("\t") && !text.includes("\n")) return;
+    e.preventDefault();
+    const startRow = parseInt(e.target.name.split("_")[1]);
+    const lines = text.trim().split(/\r?\n/).filter(l => l.trim());
+    lines.forEach((line, i) => {
+      const cols = line.split("\t");
+      const n = startRow + i;
+      ensureBulkRow(n);
+      const nameEl  = document.querySelector(`input[name="name_${n}"]`);
+      const ipEl    = document.querySelector(`input[name="ip_${n}"]`);
+      const pingBtn = document.querySelector(`.bulk-ping-btn[data-row="${n}"]`);
+      if (nameEl) nameEl.value = (cols[0] || "").trim();
+      if (ipEl) {
+        ipEl.value = (cols[1] || "").trim();
+        validateAndCheck(ipEl);
+        if (pingBtn) pingBtn.style.display = ipEl.value ? "" : "none";
+      }
+    });
+  }
+
+  function handleIPPaste(e) {
+    const ipEl = e.target;
+    setTimeout(() => {
+      validateAndCheck(ipEl);
+      const pingBtn = document.querySelector(`.bulk-ping-btn[data-row="${ipEl.dataset.row}"]`);
+      if (pingBtn) pingBtn.style.display = ipEl.value.trim() ? "" : "none";
+    }, 0);
+  }
+
+  function bindBulkRow(n) {
+    const ipEl   = document.querySelector(`input[name="ip_${n}"]`);
+    const nameEl = document.querySelector(`input[name="name_${n}"]`);
+    const pingBtn = document.querySelector(`.bulk-ping-btn[data-row="${n}"]`);
+    ipEl?.addEventListener("input", () => {
+      validateAndCheck(ipEl);
+      if (pingBtn) pingBtn.style.display = ipEl.value.trim() ? "" : "none";
+    });
+    ipEl?.addEventListener("paste", handleIPPaste);
+    nameEl?.addEventListener("paste", handleBulkPaste);
+    pingBtn?.addEventListener("click", async () => {
+      const ip = ipEl?.value.trim(); if (!ip) return;
+      const title  = document.getElementById("bulk-ping-title");
+      const output = document.getElementById("bulk-ping-output");
+      document.getElementById("bulk-ping-result").style.display = "block";
+      title.textContent = `Ping → ${ip}`; output.textContent = "檢測中..."; output.style.color = "#94a3b8";
+      try {
+        const r = await fetch("/api/ping-check/", { method:"POST", headers:{"Content-Type":"application/json","X-CSRFToken":getCookie("csrftoken")}, body: JSON.stringify({ip}) });
+        const d = await r.json();
+        output.textContent = d.error || d.output; output.style.color = d.success ? "#86efac" : "#fca5a5";
+      } catch { output.textContent = "連線失敗"; output.style.color = "#fca5a5"; }
+    });
+  }
+
+  for (let i = 1; i <= 10; i++) bindBulkRow(i);
+
+  // 送出前擋住無效 IP
+  document.querySelector("#bulk-add-section form")?.addEventListener("submit", function(e) {
+    const invalids = this.querySelectorAll("input.bulk-ip.is-invalid");
+    if (invalids.length) {
+      e.preventDefault();
+      invalids[0].focus();
+      invalids[0].scrollIntoView({behavior:"smooth", block:"center"});
+    }
+  });
+
+  // 有新增結果時自動展開並捲動
+  {% if bulk_created is not None %}
+  const bulkSection = document.getElementById("bulk-add-section");
+  if (bulkSection) { bulkSection.style.display = ""; bulkSection.scrollIntoView({behavior:"smooth", block:"start"}); }
+  {% endif %}
+})();
 </script>
 {% endblock %}
