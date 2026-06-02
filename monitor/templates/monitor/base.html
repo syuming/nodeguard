@@ -106,7 +106,7 @@
   <div class="container-fluid px-4">
     <a class="navbar-brand" href="/"><i class="bi bi-hdd-network me-2"></i>NodeGuard</a>
     <span style="font-size:.7rem;color:#475569;margin-left:4px;margin-right:8px">
-      v{{ app_version }}
+      <span onclick="openChangelog()" style="cursor:pointer;text-decoration:underline dotted;text-underline-offset:3px" title="查看更新歷程">v{{ app_version }}</span>
       <span id="update-badge" style="display:none">
         <span class="badge ms-1" style="background:#f59e0b;font-size:.65rem;cursor:pointer" onclick="document.getElementById('updateModal').style.display='flex'" title="有新版本可更新">
           <i class="bi bi-arrow-up-circle-fill me-1"></i>有新版本
@@ -190,6 +190,19 @@ function updateThemeBtn(theme) {
 {% block scripts %}{% endblock %}
 
 {% if user.is_authenticated %}
+<!-- Changelog Modal -->
+<div id="changelogModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:9999;align-items:center;justify-content:center" onclick="if(event.target===this)this.style.display='none'">
+  <div style="background:var(--bg-card);border-radius:12px;padding:2rem;width:560px;max-width:92vw;max-height:80vh;display:flex;flex-direction:column;box-shadow:0 20px 60px rgba(0,0,0,.4)">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1.25rem">
+      <h5 style="margin:0;color:var(--text-primary)"><i class="bi bi-clock-history me-2" style="color:#7c3aed"></i>更新歷程</h5>
+      <button onclick="document.getElementById('changelogModal').style.display='none'" class="btn btn-sm btn-outline-secondary" style="padding:.2rem .5rem"><i class="bi bi-x-lg"></i></button>
+    </div>
+    <div id="changelog-body" style="overflow-y:auto;flex:1;padding-right:.25rem">
+      <div style="color:var(--text-secondary);font-size:.85rem">載入中...</div>
+    </div>
+  </div>
+</div>
+
 <!-- 更新 Modal -->
 <div id="updateModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:9999;align-items:center;justify-content:center">
   <div style="background:var(--bg-card);border-radius:12px;padding:2rem;width:420px;max-width:90vw;box-shadow:0 20px 60px rgba(0,0,0,.4)">
@@ -276,6 +289,36 @@ async function waitForRestart() {
 function getCookie(name) {
   const v = document.cookie.match('(^|;)\\s*' + name + '\\s*=\\s*([^;]+)');
   return v ? v.pop() : '';
+}
+
+function openChangelog() {
+  const modal = document.getElementById('changelogModal');
+  const body = document.getElementById('changelog-body');
+  modal.style.display = 'flex';
+  body.innerHTML = '<div style="color:var(--text-secondary);font-size:.85rem">載入中...</div>';
+  fetch('/api/changelog/')
+    .then(r => r.json())
+    .then(d => {
+      if (!d.releases || d.releases.length === 0) {
+        body.innerHTML = '<div style="color:var(--text-secondary)">暫無資料</div>';
+        return;
+      }
+      body.innerHTML = d.releases.map((r, i) => `
+        <div style="margin-bottom:1.25rem;padding-bottom:1.25rem;${i < d.releases.length-1 ? 'border-bottom:1px solid var(--border-color)' : ''}">
+          <div style="display:flex;align-items:baseline;gap:.75rem;margin-bottom:.5rem">
+            <span style="font-weight:600;color:var(--text-primary);font-size:.95rem">v${r.version}</span>
+            <span style="font-size:.75rem;color:var(--text-secondary)">${r.date}</span>
+            ${i === 0 ? '<span class="badge" style="background:#7c3aed;font-size:.65rem">最新</span>' : ''}
+          </div>
+          <ul style="margin:0;padding-left:1.25rem;color:var(--text-secondary);font-size:.85rem;line-height:1.8">
+            ${r.changes.map(c => `<li>${c}</li>`).join('')}
+          </ul>
+        </div>
+      `).join('');
+    })
+    .catch(() => {
+      body.innerHTML = '<div style="color:#ef4444">載入失敗</div>';
+    });
 }
 </script>
 {% endif %}

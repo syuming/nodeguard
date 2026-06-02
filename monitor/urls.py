@@ -41,4 +41,5 @@ urlpatterns = [
 
     path("api/version-check/", views.api_version_check, name="api_version_check"),
     path("api/system-update/", views.api_system_update, name="api_system_update"),
+    path("api/changelog/", views.api_changelog, name="api_changelog"),
 ]

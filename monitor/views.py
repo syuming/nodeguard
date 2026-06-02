@@ -700,3 +700,30 @@ def api_system_update(request):
         close_fds=True,
     )
     return JsonResponse({"status": "started"})
+
+
+@login_required
+def api_changelog(request):
+    changelog_file = Path(__file__).resolve().parent.parent / "CHANGELOG.md"
+    try:
+        text = changelog_file.read_text(encoding="utf-8")
+    except Exception:
+        return JsonResponse({"releases": []})
+
+    releases = []
+    current = None
+    for line in text.splitlines():
+        if line.startswith("## "):
+            if current:
+                releases.append(current)
+            header = line[3:].strip()          # e.g. "v1.3.9 — 2026-06-02"
+            parts = header.replace("—", "—").split("—")
+            version = parts[0].strip().lstrip("v")
+            date = parts[1].strip() if len(parts) > 1 else ""
+            current = {"version": version, "date": date, "changes": []}
+        elif line.startswith("- ") and current is not None:
+            current["changes"].append(line[2:].strip())
+    if current:
+        releases.append(current)
+
+    return JsonResponse({"releases": releases})
