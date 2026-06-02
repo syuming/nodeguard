@@ -372,8 +372,11 @@ def device_delete(request, pk):
     device = get_object_or_404(Device, pk=pk)
     if not can_access_device(request.user, device):
         raise Http404
+    company_pk = device.company_id
     device.delete()
     messages.success(request, "設備已刪除")
+    if company_pk:
+        return redirect(f"/company/{company_pk}/")
     return redirect("/")
 
 
