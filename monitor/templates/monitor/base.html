@@ -262,6 +262,9 @@ function checkVersion() {
 }
 checkVersion();
 setInterval(checkVersion, 30 * 60 * 1000);
+// 切回分頁或視窗時重新偵測（涵蓋重啟後回到頁面的情境）
+document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') checkVersion(); });
+window.addEventListener('focus', checkVersion);
 
 function doUpdate() {
   const btnUpdate = document.getElementById('btn-update');
