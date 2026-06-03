@@ -182,6 +182,8 @@ def _run_ssh_check(check):
             "port": check.port or 22,
             "timeout": 10,
             "conn_timeout": 10,
+            "ssh_strict": True,
+            "system_host_keys": True,
         }
         with ConnectHandler(**conn_params) as conn:
             lines = []

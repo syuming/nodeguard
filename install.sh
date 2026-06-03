@@ -23,7 +23,7 @@ APP_DIR="${HOME}/nodeguard"
 REPO_SSH="git@github.com:syuming/nodeguard.git"
 APP_PORT="8000"
 ADMIN_USER="admin"
-ADMIN_PASS="NodeGuard@2026"
+ADMIN_PASS="$(python3 -c "import secrets, string; print(''.join(secrets.choice(string.ascii_letters + string.digits + '!@#$%') for _ in range(20)))")"
 
 echo ""
 echo -e "${BOLD}╔══════════════════════════════════════╗${RESET}"
