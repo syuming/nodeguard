@@ -13,3 +13,5 @@ audit/
 
 # Claude Code
 CLAUDE.md
+.claudeignore
+db.sqlite3-*

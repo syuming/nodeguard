@@ -92,6 +92,13 @@ else
     info ".env 已存在，略過"
 fi
 
+# ── 5b. 設定 logrotate ────────────────────────────────────────────────────────
+info "設定 log 自動輪轉..."
+printf '%s/access.log %s/nodeguard.log %s/duplicate_ip.log {\n    size 10M\n    rotate 5\n    compress\n    delaycompress\n    missingok\n    notifempty\n    copytruncate\n}\n' \
+    "$APP_DIR" "$APP_DIR" "$APP_DIR" | sudo tee /etc/logrotate.d/nodeguard >/dev/null \
+    && success "logrotate 設定完成（/etc/logrotate.d/nodeguard）" \
+    || warn "logrotate 設定失敗，log 將不會自動輪轉"
+
 # ── 6. 資料庫 Migration ───────────────────────────────────────────────────────
 info "建立資料庫..."
 python manage.py migrate --run-syncdb 2>&1 | grep -E "(OK|Apply|No migration)" || true
