@@ -1,6 +1,8 @@
 from django.db import models
 from django.contrib.auth.models import User
 
+from .fields import EncryptedCharField
+
 
 class Company(models.Model):
     name = models.CharField(max_length=100, unique=True, verbose_name="公司名稱")
@@ -96,7 +98,7 @@ class EmailConfig(models.Model):
     host       = models.CharField(max_length=200, default="smtp.gmail.com", verbose_name="SMTP 主機")
     port       = models.IntegerField(default=587, verbose_name="Port")
     username   = models.CharField(max_length=200, blank=True, verbose_name="帳號")
-    password   = models.CharField(max_length=200, blank=True, verbose_name="密碼")
+    password   = EncryptedCharField(max_length=500, blank=True, verbose_name="密碼")
     from_email = models.CharField(max_length=200, blank=True, verbose_name="寄件者 Email")
     enabled    = models.BooleanField(default=False, verbose_name="啟用 Email 功能")
 
@@ -134,12 +136,12 @@ class MonitorCheck(models.Model):
     port         = models.IntegerField(null=True, blank=True, verbose_name="Port")
     # SSH
     ssh_username = models.CharField(max_length=100, blank=True, verbose_name="SSH 帳號")
-    ssh_password = models.CharField(max_length=100, blank=True, verbose_name="SSH 密碼")
+    ssh_password = EncryptedCharField(max_length=500, blank=True, verbose_name="SSH 密碼")
     # HTTP
     url                  = models.CharField(max_length=500, blank=True, verbose_name="URL")
     expected_status_code = models.IntegerField(default=200, verbose_name="預期 HTTP 狀態碼")
     # SNMP
-    snmp_community = models.CharField(max_length=100, blank=True, default="public", verbose_name="Community String")
+    snmp_community = EncryptedCharField(max_length=500, blank=True, default="public", verbose_name="Community String")
     snmp_version   = models.IntegerField(default=2, verbose_name="SNMP 版本")
     snmp_port      = models.IntegerField(default=161, verbose_name="SNMP Port")
     snmp_oid       = models.CharField(max_length=200, blank=True, verbose_name="監控 OID")
