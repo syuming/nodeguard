@@ -1,5 +1,11 @@
 # Changelog
 
+## v1.7.4 — 2026-06-11
+- 安全修補：`api_check_ip` 加入公司範圍檢查，防止跨公司枚舉設備 IP 與名稱
+- 安全強化：Email 密碼、SSH 密碼、SNMP Community 改以 Fernet 加密落盤，升級時自動加密既有資料
+- 重構：`views.py` 拆分為功能域模組（auth/devices/companies/checks/api/system 等），監控執行緒獨立為 `monitoring.py`
+- 測試：新增 21 個自動化測試（RBAC、加密欄位、頁面權限煙霧測試）
+
 ## v1.7.3 — 2026-06-04
 - 安全修補：`install.sh` 預設密碼改為安裝時隨機產生，避免公開已知憑證遭利用
 - 安全修補：SSH 偵測連線加入主機金鑰驗證（`ssh_strict`），防止中間人攻擊竊取設備憑證
