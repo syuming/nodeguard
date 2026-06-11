@@ -13,7 +13,7 @@
 
 ## ⚡ 一鍵安裝
 
-適用 Ubuntu 20.04 / 22.04 / 24.04，**不需要 sudo**，安裝至 `~/nodeguard`。
+適用 Ubuntu 20.04 / 22.04 / 24.04，安裝至 `~/nodeguard`（安裝 traceroute 與 logrotate 設定時需要 sudo）。
 
 **前置需求（若尚未安裝）：**
 
@@ -35,8 +35,8 @@ curl -fsSL https://raw.githubusercontent.com/syuming/nodeguard/main/install.sh |
 ╠══════════════════════════════════════════════╣
 ║  網址：    http://<伺服器IP>:8000
 ║  帳號：    admin
-║  密碼：    NodeGuard@2026
-║  ⚠ 請登入後立即至「個人資料」修改密碼！
+║  密碼：    （安裝時隨機產生，顯示於畫面上）
+║  ⚠ 請妥善保存密碼，或登入後自行修改！
 ╚══════════════════════════════════════════════╝
 ```
 
@@ -71,6 +71,7 @@ curl -fsSL https://raw.githubusercontent.com/syuming/nodeguard/main/install.sh |
 | **TCP** | 指定 Port 連線測試 |
 | **SSH** | SSH 登入並執行 show 指令 |
 | **HTTP** | HTTP/HTTPS 狀態碼確認 |
+| **SNMP** | OID 查詢（如 Interface 狀態），支援自動掃描 |
 
 支援設備：`Cisco IOS`、`Cisco NX-OS`、`Juniper JunOS`、`Linux`、`Generic`
 
@@ -93,10 +94,13 @@ curl -fsSL https://raw.githubusercontent.com/syuming/nodeguard/main/install.sh |
 nodeguard/           # Django 設定、wsgi
 monitor/
   models.py          # Company、Device、MonitorCheck、DeviceLog、DowntimeRecord
-  views.py           # Dashboard、設備管理、使用者管理、API
-  utils.py           # Ping / TCP / SSH / HTTP 監控邏輯
+  views/             # 依功能域拆分：auth、devices、companies、checks、status_api、system 等
+  monitoring.py      # 持續監控背景執行緒
+  fields.py          # 憑證加密欄位（Fernet）
+  utils.py           # Ping / TCP / SSH / HTTP / SNMP 監控邏輯
   forms.py           # 表單定義
   urls.py            # 路由設定
+  tests.py           # 自動化測試
   templates/monitor/ # HTML 範本
 static/              # Bootstrap 5、Bootstrap Icons、custom.css
 install.sh           # 一鍵安裝
