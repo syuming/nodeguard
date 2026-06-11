@@ -208,3 +208,66 @@ class ViewSmokeTests(TestCase):
         self.client.login(username="smoke_a", password="test-pass-123")
         resp = self.client.get("/api/changelog/")
         self.assertIn("releases", resp.json())
+
+
+class BulkCreateDevicesTests(TestCase):
+    """bulk_create_devices：device_bulk_add 與 company_detail 共用的批量建立邏輯。"""
+
+    def setUp(self):
+        from monitor.views.bulk import bulk_create_devices
+        self.bulk_create = bulk_create_devices
+        self.company = Company.objects.create(name="批量測試公司")
+
+    def test_creates_devices_with_ping_check(self):
+        post = {"name_1": "dev1", "ip_1": "10.20.0.1", "name_2": "dev2", "ip_2": "10.20.0.2"}
+        created, errors, skipped = self.bulk_create(post, self.company, run_initial_check=False)
+        self.assertEqual(len(created), 2)
+        self.assertEqual(errors, [])
+        self.assertEqual(skipped, [])
+        for d in created:
+            self.assertEqual(d.company, self.company)
+            self.assertTrue(d.checks.filter(check_type="ping", enabled=True).exists())
+
+    def test_skips_duplicate_ip(self):
+        Device.objects.create(company=self.company, name="既有設備", ip_address="10.20.0.9")
+        post = {"name_1": "新設備", "ip_1": "10.20.0.9"}
+        created, errors, skipped = self.bulk_create(post, self.company, run_initial_check=False)
+        self.assertEqual(created, [])
+        self.assertEqual(len(skipped), 1)
+        self.assertEqual(skipped[0]["existing_name"], "既有設備")
+
+    def test_partial_row_reports_error(self):
+        post = {"name_1": "只有名稱", "ip_1": "", "name_2": "", "ip_2": ""}
+        created, errors, skipped = self.bulk_create(post, self.company, run_initial_check=False)
+        self.assertEqual(created, [])
+        self.assertEqual(len(errors), 1)
+        self.assertIn("第 1 筆", errors[0])
+
+    def test_supports_rows_beyond_ten(self):
+        post = {f"name_{i}": f"dev{i}" for i in range(1, 16)}
+        post.update({f"ip_{i}": f"10.30.0.{i}" for i in range(1, 16)})
+        created, errors, skipped = self.bulk_create(post, self.company, run_initial_check=False)
+        self.assertEqual(len(created), 15)
+
+    def test_bulk_add_view_still_works(self):
+        """端對端：admin 透過 /device/bulk-add/ 批量新增。"""
+        admin = User.objects.create_user(username="bulk_admin", password="test-pass-123")
+        UserProfile.objects.create(user=admin, role="admin")
+        self.client.login(username="bulk_admin", password="test-pass-123")
+        resp = self.client.post("/device/bulk-add/", {
+            "company": self.company.pk,
+            "name_1": "e2e設備", "ip_1": "10.40.0.1",
+        })
+        self.assertEqual(resp.status_code, 200)
+        self.assertTrue(Device.objects.filter(name="e2e設備", company=self.company).exists())
+
+    def test_company_detail_bulk_add_still_works(self):
+        """端對端：admin 在公司頁面批量新增。"""
+        admin = User.objects.create_user(username="bulk_admin2", password="test-pass-123")
+        UserProfile.objects.create(user=admin, role="admin")
+        self.client.login(username="bulk_admin2", password="test-pass-123")
+        resp = self.client.post(f"/company/{self.company.pk}/", {
+            "name_1": "公司頁設備", "ip_1": "10.40.0.2",
+        })
+        self.assertEqual(resp.status_code, 200)
+        self.assertTrue(Device.objects.filter(name="公司頁設備", company=self.company).exists())

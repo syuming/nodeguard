@@ -1,8 +1,4 @@
 """公司 CRUD 與孤立設備管理（僅系統管理者）。"""
-import logging
-import re
-import threading
-
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.http import Http404, JsonResponse
@@ -10,11 +6,9 @@ from django.shortcuts import get_object_or_404, redirect, render
 from django.views.decorators.http import require_POST
 
 from ..forms import CompanyForm
-from ..models import Company, Device, MonitorCheck
-from ..utils import check_device
+from ..models import Company, Device
+from .bulk import bulk_create_devices
 from .helpers import get_profile
-
-_dup_logger = logging.getLogger("nodeguard.duplicate_ip")
 
 
 @login_required
@@ -27,52 +21,7 @@ def company_detail(request, pk):
     bulk_created = bulk_errors = bulk_skipped = None
 
     if request.method == "POST" and profile.is_admin:
-        row_indices = sorted({
-            int(m.group(1))
-            for key in request.POST
-            if (m := re.match(r'^name_(\d+)$', key))
-        })
-        bulk_created, bulk_errors, bulk_skipped = [], [], []
-        for i in row_indices:
-            name = request.POST.get(f"name_{i}", "").strip()
-            ip   = request.POST.get(f"ip_{i}", "").strip()
-            if not name and not ip:
-                continue
-            if not name or not ip:
-                bulk_errors.append(f"第 {i} 筆：名稱和 IP 都必須填寫")
-                continue
-            existing = Device.objects.filter(ip_address=ip).select_related("company").first()
-            if existing:
-                bulk_skipped.append({
-                    "row": i, "name": name, "ip": ip,
-                    "existing_name": existing.name,
-                    "existing_company": existing.company.name if existing.company else "-",
-                })
-                _dup_logger.warning(
-                    "重複 IP 略過 | row=%d name=%s ip=%s existing=%s company=%s",
-                    i, name, ip, existing.name,
-                    existing.company.name if existing.company else "-",
-                )
-                continue
-            try:
-                device = Device.objects.create(
-                    name=name, ip_address=ip,
-                    company=company, device_type="generic",
-                )
-                MonitorCheck.objects.create(device=device, check_type="ping", interval=3, enabled=True)
-                bulk_created.append(device)
-            except Exception as e:
-                bulk_errors.append(f"第 {i} 筆（{name} / {ip}）：{e}")
-
-        if bulk_created:
-            def _bg():
-                from ..models import Device as _D
-                for dev in bulk_created:
-                    try:
-                        check_device(_D.objects.get(pk=dev.pk))
-                    except Exception:
-                        pass
-            threading.Thread(target=_bg, daemon=True).start()
+        bulk_created, bulk_errors, bulk_skipped = bulk_create_devices(request.POST, company)
 
     devices = Device.objects.filter(company=company).order_by("name")
     status_counts = {s: devices.filter(status=s).count() for s in ("online", "warning", "offline", "unknown")}
