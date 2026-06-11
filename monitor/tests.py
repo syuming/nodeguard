@@ -123,3 +123,88 @@ class EncryptedFieldTests(TestCase):
             )
         reloaded = MonitorCheck.objects.get(pk=check.pk)
         self.assertEqual(reloaded.ssh_password, "legacy-plain")
+
+
+class ViewSmokeTests(TestCase):
+    """重構 views 的回歸安全網：覆蓋主要頁面與 API 的權限和回應。"""
+
+    def setUp(self):
+        self.company_a = Company.objects.create(name="冒煙A")
+        self.company_b = Company.objects.create(name="冒煙B")
+        self.device_a = Device.objects.create(
+            company=self.company_a, name="設備A", ip_address="172.16.0.1"
+        )
+        self.device_b = Device.objects.create(
+            company=self.company_b, name="設備B", ip_address="172.16.0.2"
+        )
+        self.user_a = User.objects.create_user(username="smoke_a", password="test-pass-123")
+        UserProfile.objects.create(user=self.user_a, role="company_manager", company=self.company_a)
+        self.admin = User.objects.create_user(username="smoke_admin", password="test-pass-123")
+        UserProfile.objects.create(user=self.admin, role="admin")
+
+    def test_login_page_renders(self):
+        resp = self.client.get("/login/")
+        self.assertEqual(resp.status_code, 200)
+
+    def test_login_success_redirects(self):
+        resp = self.client.post("/login/", {"username": "smoke_a", "password": "test-pass-123"})
+        self.assertEqual(resp.status_code, 302)
+
+    def test_dashboard_requires_login(self):
+        resp = self.client.get("/")
+        self.assertEqual(resp.status_code, 302)
+
+    def test_dashboard_renders_for_admin(self):
+        self.client.login(username="smoke_admin", password="test-pass-123")
+        resp = self.client.get("/")
+        self.assertEqual(resp.status_code, 200)
+
+    def test_device_detail_rbac(self):
+        self.client.login(username="smoke_a", password="test-pass-123")
+        ok = self.client.get(f"/device/{self.device_a.pk}/")
+        self.assertEqual(ok.status_code, 200)
+        denied = self.client.get(f"/device/{self.device_b.pk}/")
+        self.assertEqual(denied.status_code, 404)
+
+    def test_api_device_status_scoped_to_company(self):
+        self.client.login(username="smoke_a", password="test-pass-123")
+        resp = self.client.get("/api/status/")
+        names = [d["name"] for d in resp.json()["devices"]]
+        self.assertIn("設備A", names)
+        self.assertNotIn("設備B", names)
+
+    def test_api_monitor_status_returns_state(self):
+        self.client.login(username="smoke_a", password="test-pass-123")
+        resp = self.client.get("/api/monitor/status/")
+        data = resp.json()
+        self.assertIn("monitoring", data)
+        self.assertIn("interval", data)
+
+    def test_company_list_admin_only(self):
+        self.client.login(username="smoke_a", password="test-pass-123")
+        self.assertEqual(self.client.get("/company/").status_code, 404)
+        self.client.login(username="smoke_admin", password="test-pass-123")
+        self.assertEqual(self.client.get("/company/").status_code, 200)
+
+    def test_orphan_devices_admin_only(self):
+        self.client.login(username="smoke_a", password="test-pass-123")
+        self.assertEqual(self.client.get("/device/orphans/").status_code, 404)
+        self.client.login(username="smoke_admin", password="test-pass-123")
+        self.assertEqual(self.client.get("/device/orphans/").status_code, 200)
+
+    def test_email_settings_admin_only(self):
+        self.client.login(username="smoke_a", password="test-pass-123")
+        self.assertEqual(self.client.get("/settings/email/").status_code, 404)
+        self.client.login(username="smoke_admin", password="test-pass-123")
+        self.assertEqual(self.client.get("/settings/email/").status_code, 200)
+
+    def test_user_list_admin_only(self):
+        self.client.login(username="smoke_a", password="test-pass-123")
+        self.assertEqual(self.client.get("/users/").status_code, 404)
+        self.client.login(username="smoke_admin", password="test-pass-123")
+        self.assertEqual(self.client.get("/users/").status_code, 200)
+
+    def test_api_changelog_returns_releases(self):
+        self.client.login(username="smoke_a", password="test-pass-123")
+        resp = self.client.get("/api/changelog/")
+        self.assertIn("releases", resp.json())

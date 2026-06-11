@@ -11,8 +11,5 @@ class MonitorConfig(AppConfig):
     def ready(self):
         if set(sys.argv) & _SKIP_CMDS:
             return
-        from . import views
-        import threading
-        views._monitor_stop.clear()
-        views._monitor_thread = threading.Thread(target=views._monitor_loop, daemon=True)
-        views._monitor_thread.start()
+        from . import monitoring
+        monitoring.start()
