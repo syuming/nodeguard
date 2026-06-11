@@ -97,7 +97,7 @@ class MonitorCheckForm(forms.ModelForm):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         for f in ("port", "ssh_username", "ssh_password", "url",
-                  "snmp_community", "snmp_version", "snmp_port"):
+                  "snmp_community", "snmp_version", "snmp_port", "interval"):
             self.fields[f].required = False
         self.fields["snmp_version"].widget = forms.Select(choices=[(1, "v1"), (2, "v2c")])
 

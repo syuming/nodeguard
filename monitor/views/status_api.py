@@ -7,9 +7,9 @@ from django.shortcuts import get_object_or_404
 from django.views.decorators.http import require_POST
 
 from .. import monitoring
-from ..models import Device
+from ..models import Device, MonitorConfig
 from ..utils import check_device
-from .helpers import can_access_device, get_visible_devices
+from .helpers import can_access_device, get_profile, get_visible_devices
 
 
 @login_required
@@ -92,13 +92,41 @@ def api_device_logs(request, pk):
 @login_required
 @require_POST
 def api_monitor_toggle(request):
+    interval = monitoring.get_global_interval()
     if monitoring.is_running():
         monitoring.stop()
-        return JsonResponse({"monitoring": False, "interval": monitoring.MONITOR_INTERVAL})
+        return JsonResponse({"monitoring": False, "interval": interval})
     monitoring.start()
-    return JsonResponse({"monitoring": True, "interval": monitoring.MONITOR_INTERVAL})
+    return JsonResponse({"monitoring": True, "interval": interval})
 
 
 @login_required
 def api_monitor_status(request):
-    return JsonResponse({"monitoring": monitoring.is_running(), "interval": monitoring.MONITOR_INTERVAL})
+    return JsonResponse({
+        "monitoring": monitoring.is_running(),
+        "interval": monitoring.get_global_interval(),
+    })
+
+
+MIN_INTERVAL = 1
+MAX_INTERVAL = 3600
+
+
+@login_required
+@require_POST
+def api_monitor_interval(request):
+    """設定持續監控全域間隔（秒），僅系統管理者。"""
+    profile = get_profile(request.user)
+    if not profile.is_admin:
+        return JsonResponse({"error": "無權限"}, status=403)
+    try:
+        interval = int(request.POST.get("interval", ""))
+    except (TypeError, ValueError):
+        return JsonResponse({"error": "間隔必須是整數"}, status=400)
+    if not (MIN_INTERVAL <= interval <= MAX_INTERVAL):
+        return JsonResponse(
+            {"error": f"間隔須介於 {MIN_INTERVAL}–{MAX_INTERVAL} 秒"}, status=400)
+    cfg = MonitorConfig.get_config()
+    cfg.interval = interval
+    cfg.save(update_fields=["interval"])
+    return JsonResponse({"ok": True, "interval": interval})

@@ -271,3 +271,95 @@ class BulkCreateDevicesTests(TestCase):
         })
         self.assertEqual(resp.status_code, 200)
         self.assertTrue(Device.objects.filter(name="公司頁設備", company=self.company).exists())
+
+
+class MonitorIntervalTests(TestCase):
+    """全域監控間隔設定 + 監控項目「跟隨全域 / 自訂」間隔語意。"""
+
+    def setUp(self):
+        from monitor.models import MonitorConfig
+        self.MonitorConfig = MonitorConfig
+        self.company = Company.objects.create(name="間隔測試公司")
+        self.device = Device.objects.create(
+            company=self.company, name="間隔設備", ip_address="10.50.0.1"
+        )
+        self.admin = User.objects.create_user(username="iv_admin", password="test-pass-123")
+        UserProfile.objects.create(user=self.admin, role="admin")
+        self.user = User.objects.create_user(username="iv_user", password="test-pass-123")
+        UserProfile.objects.create(user=self.user, role="company_manager", company=self.company)
+
+    def test_default_global_interval_is_3(self):
+        self.assertEqual(self.MonitorConfig.get_config().interval, 3)
+
+    def test_admin_can_set_interval(self):
+        self.client.login(username="iv_admin", password="test-pass-123")
+        resp = self.client.post("/api/monitor/interval/", {"interval": "10"})
+        self.assertEqual(resp.status_code, 200)
+        self.assertEqual(self.MonitorConfig.get_config().interval, 10)
+        status = self.client.get("/api/monitor/status/").json()
+        self.assertEqual(status["interval"], 10)
+
+    def test_non_admin_cannot_set_interval(self):
+        self.client.login(username="iv_user", password="test-pass-123")
+        resp = self.client.post("/api/monitor/interval/", {"interval": "10"})
+        self.assertEqual(resp.status_code, 403)
+        self.assertEqual(self.MonitorConfig.get_config().interval, 3)
+
+    def test_invalid_interval_rejected(self):
+        self.client.login(username="iv_admin", password="test-pass-123")
+        for bad in ("0", "-5", "abc", "9999"):
+            resp = self.client.post("/api/monitor/interval/", {"interval": bad})
+            self.assertEqual(resp.status_code, 400, f"interval={bad} 應被拒絕")
+        self.assertEqual(self.MonitorConfig.get_config().interval, 3)
+
+    def test_check_interval_nullable_means_follow_global(self):
+        check = MonitorCheck.objects.create(device=self.device, check_type="ping")
+        self.assertIsNone(check.interval)
+
+    def test_only_due_checks_run(self):
+        """only_due 模式：跟隨全域的檢查依全域間隔到期，自訂間隔的依自訂值。"""
+        from datetime import timedelta
+        from unittest.mock import patch
+        from django.utils import timezone
+        from monitor.utils import check_device
+
+        follow = MonitorCheck.objects.create(device=self.device, check_type="ping", interval=None)
+        custom = MonitorCheck.objects.create(device=self.device, check_type="ping", interval=3600)
+
+        with patch("monitor.utils.ping_device", return_value=(True, 1.0)) as mock_ping:
+            # 第一次：兩個都沒跑過 → 都到期
+            check_device(self.device, only_due=True)
+            self.assertEqual(mock_ping.call_count, 2)
+
+            # 把 follow 設成超過全域間隔(3s)前、custom 還在 3600s 內
+            now = timezone.now()
+            MonitorCheck.objects.filter(pk=follow.pk).update(last_checked=now - timedelta(seconds=5))
+            MonitorCheck.objects.filter(pk=custom.pk).update(last_checked=now - timedelta(seconds=5))
+            mock_ping.reset_mock()
+            check_device(self.device, only_due=True)
+            self.assertEqual(mock_ping.call_count, 1)  # 只有 follow 到期
+
+            # 手動模式（only_due=False）跑全部
+            mock_ping.reset_mock()
+            check_device(self.device)
+            self.assertEqual(mock_ping.call_count, 2)
+
+    def test_form_interval_optional(self):
+        from monitor.forms import MonitorCheckForm
+        form = MonitorCheckForm({
+            "check_type": "ping", "interval": "",
+            "expected_status_code": "200", "enabled": "on",
+        })
+        self.assertTrue(form.is_valid(), form.errors)
+        self.assertIsNone(form.cleaned_data["interval"])
+
+    def test_api_check_edit_accepts_null_interval(self):
+        check = MonitorCheck.objects.create(device=self.device, check_type="ping", interval=60)
+        self.client.login(username="iv_user", password="test-pass-123")
+        resp = self.client.post(
+            f"/api/checks/{check.pk}/edit/",
+            data='{"interval": null}', content_type="application/json",
+        )
+        self.assertEqual(resp.status_code, 200)
+        check.refresh_from_db()
+        self.assertIsNone(check.interval)

@@ -23,7 +23,8 @@ def api_snmp_add_checks(request, pk):
     community = body.get("community", "public")
     port      = int(body.get("port", 161))
     version   = int(body.get("version", 2))
-    interval  = int(body.get("interval", 60))
+    raw_interval = body.get("interval")
+    interval = int(raw_interval) if raw_interval else None   # 空值 = 跟隨持續監控
     interfaces = body.get("interfaces", [])
     created = 0
     OID_IF_OPER_STATUS = "1.3.6.1.2.1.2.2.1.8"
@@ -118,7 +119,8 @@ def api_monitor_check_edit(request, check_pk):
     check.expected_status_code = int(body.get("expected_status_code") or 200)
     check.snmp_community      = body.get("snmp_community", "public")
     check.snmp_port           = int(body.get("snmp_port") or 161)
-    check.interval            = int(body.get("interval") or 60)
+    raw_interval = body.get("interval")
+    check.interval = int(raw_interval) if raw_interval else None   # 空值 = 跟隨持續監控
     if "snmp_label" in body:
         check.snmp_label = body["snmp_label"]
     if "snmp_oid" in body:

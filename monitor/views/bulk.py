@@ -51,7 +51,8 @@ def bulk_create_devices(post_data, company, run_initial_check=True):
                 name=name, ip_address=ip,
                 company=company, device_type="generic",
             )
-            MonitorCheck.objects.create(device=device, check_type="ping", interval=3, enabled=True)
+            # interval=None：跟隨持續監控的全域間隔
+            MonitorCheck.objects.create(device=device, check_type="ping", interval=None, enabled=True)
             created.append(device)
         except Exception as e:
             errors.append(f"第 {i} 筆（{name} / {ip}）：{e}")

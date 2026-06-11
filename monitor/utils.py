@@ -314,13 +314,16 @@ def run_check(check):
 _SEVERITY = {"online": 0, "warning": 1, "offline": 2, "unknown": -1}
 
 
-def check_device(device):
+def check_device(device, only_due=False):
     """
-    Run all enabled MonitorChecks for a device.
+    Run enabled MonitorChecks for a device.
+    only_due=True（持續監控用）：只跑到期的檢查——間隔為空值的跟隨全域
+    監控間隔，有值的依自訂秒數；only_due=False（手動檢查）一律全跑。
     Computes overall device status as the worst check result.
     Saves DeviceLog entries and tracks DowntimeRecord.
     """
     from monitor.models import DeviceLog, DowntimeRecord
+    from monitor.monitoring import get_global_interval
 
     prev_status = device.status
     now = timezone.now()
@@ -329,13 +332,29 @@ def check_device(device):
 
     if not checks:
         # No checks configured — leave status as-is, just update last_checked
+        # （only_due 模式下依全域間隔節流，避免每秒寫入 DB）
+        if only_due and device.last_checked and \
+                (now - device.last_checked).total_seconds() < get_global_interval():
+            return device.status
         device.last_checked = now
         device.save(update_fields=["last_checked"])
         return device.status
 
+    if only_due:
+        global_interval = get_global_interval()
+        to_run = [
+            c for c in checks
+            if c.last_checked is None
+            or (now - c.last_checked).total_seconds() >= (c.interval or global_interval)
+        ]
+        if not to_run:
+            return device.status
+    else:
+        to_run = checks
+
     worst_status = "online"
     failed_reasons = []
-    for check in checks:
+    for check in to_run:
         prev_check_status = check.last_status
         status, msg = run_check(check)
         label = check.get_check_type_display()
@@ -347,9 +366,13 @@ def check_device(device):
                 level=level,
                 message=f"[{label}] {msg}",
             )
+    # 整體狀態以「全部」啟用檢查彙總（剛跑完的已是新狀態，未到期的沿用上次結果）
+    for check in checks:
+        status = check.last_status
         if _SEVERITY.get(status, -1) > _SEVERITY.get(worst_status, -1):
             worst_status = status
         if status == "offline":
+            label = check.get_check_type_display()
             snmp_label = getattr(check, "snmp_label", "")
             display = f"{label}({snmp_label})" if snmp_label else label
             failed_reasons.append(display)

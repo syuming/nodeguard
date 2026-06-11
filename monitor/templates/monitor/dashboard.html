@@ -125,6 +125,14 @@
     <button id="monitor-toggle-btn" class="btn btn-sm btn-outline-secondary" onclick="toggleMonitor()">
       <i class="bi bi-play-circle me-1"></i>持續監控：關閉
     </button>
+    {% if profile.is_admin %}
+    <div class="input-group input-group-sm" style="width:auto" title="持續監控的全域間隔（1–3600 秒）">
+      <span class="input-group-text">每</span>
+      <input type="number" id="monitor-interval-input" class="form-control" style="width:72px" min="1" max="3600">
+      <span class="input-group-text">秒</span>
+      <button class="btn btn-outline-secondary" onclick="setMonitorInterval()">套用</button>
+    </div>
+    {% endif %}
   </div>
 </div>
 
@@ -301,6 +309,24 @@ function updateMonitorBtn(monitoring, interval) {
     btn.className = "btn btn-sm btn-outline-secondary";
     btn.innerHTML = `<i class="bi bi-play-circle me-1"></i>持續監控：關閉`;
   }
+  const input = document.getElementById("monitor-interval-input");
+  if (input && document.activeElement !== input) input.value = interval;
+}
+function setMonitorInterval() {
+  const input = document.getElementById("monitor-interval-input");
+  const body = new URLSearchParams({interval: input.value});
+  fetch("/api/monitor/interval/", {
+    method: "POST",
+    headers: {"X-CSRFToken": getCookie("csrftoken")},
+    body,
+  })
+  .then(r => r.json().then(data => ({ok: r.ok, data})))
+  .then(({ok, data}) => {
+    if (!ok) { alert(data.error || "設定失敗"); return; }
+    fetch("/api/monitor/status/")
+      .then(r => r.json())
+      .then(d => updateMonitorBtn(d.monitoring, d.interval));
+  });
 }
 function toggleMonitor() {
   fetch("/api/monitor/toggle/", { method:"POST", headers:{"X-CSRFToken":getCookie("csrftoken")} })

@@ -34,6 +34,7 @@ from .status_api import (
     api_device_detail_status,
     api_device_logs,
     api_device_status,
+    api_monitor_interval,
     api_monitor_status,
     api_monitor_toggle,
 )

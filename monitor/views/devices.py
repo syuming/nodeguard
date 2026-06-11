@@ -39,7 +39,8 @@ def device_add(request):
     form = DeviceForm(request.POST or None, user_profile=profile, initial_company_pk=initial_company_pk)
     if form.is_valid():
         device = form.save()
-        MonitorCheck.objects.create(device=device, check_type="ping", interval=3, enabled=True)
+        # interval=None：跟隨持續監控的全域間隔
+        MonitorCheck.objects.create(device=device, check_type="ping", interval=None, enabled=True)
         _dpk = device.pk
         def _bg_check():
             from ..models import Device as _D

@@ -114,6 +114,23 @@ class EmailConfig(models.Model):
         return obj
 
 
+class MonitorConfig(models.Model):
+    """持續監控全域設定（singleton，pk=1）。"""
+
+    interval = models.IntegerField(default=3, verbose_name="監控間隔（秒）")
+
+    class Meta:
+        verbose_name = "監控設定"
+
+    def __str__(self):
+        return f"監控設定（每 {self.interval} 秒）"
+
+    @classmethod
+    def get_config(cls):
+        obj, _ = cls.objects.get_or_create(pk=1)
+        return obj
+
+
 class MonitorCheck(models.Model):
     CHECK_TYPE_CHOICES = [
         ("ping", "Ping"),
@@ -147,7 +164,8 @@ class MonitorCheck(models.Model):
     snmp_oid       = models.CharField(max_length=200, blank=True, verbose_name="監控 OID")
     snmp_label     = models.CharField(max_length=200, blank=True, verbose_name="Interface 名稱")
     # Common
-    interval = models.IntegerField(default=60, verbose_name="檢查間隔（秒）")
+    # 空值 = 跟隨持續監控的全域間隔；有值 = 自訂秒數
+    interval = models.IntegerField(null=True, blank=True, default=None, verbose_name="檢查間隔（秒）")
     enabled  = models.BooleanField(default=True, verbose_name="啟用")
     # Last result
     last_status  = models.CharField(max_length=20, choices=STATUS_CHOICES, default="unknown", verbose_name="最後狀態")

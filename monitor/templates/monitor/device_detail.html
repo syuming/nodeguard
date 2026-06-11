@@ -160,7 +160,8 @@
               </div>
               <div class="col-2">
                 <label class="form-label form-label-sm">間隔（秒）</label>
-                <input type="number" name="interval" class="form-control form-control-sm" value="3" min="1">
+                <input type="number" name="interval" class="form-control form-control-sm" min="1"
+                       placeholder="跟隨持續監控" title="留空 = 跟隨持續監控的全域間隔；填數字 = 自訂秒數">
               </div>
               <input type="hidden" name="enabled" value="true">
               <div class="col-auto">
@@ -203,7 +204,7 @@
                   {% if c.snmp_oid %}<br><span style="color:#475569;font-size:.72rem">{{ c.snmp_oid }}</span>{% endif %}
                 {% endif %}
               </td>
-              <td style="font-size:.82rem">{{ c.interval }}s</td>
+              <td style="font-size:.82rem">{% if c.interval %}{{ c.interval }}s{% else %}<span style="color:#64748b">跟隨</span>{% endif %}</td>
               <td>
                 <span class="badge check-status-badge badge-{{ c.last_status }}">{{ c.get_last_status_display }}</span>
               </td>
@@ -221,7 +222,7 @@
                   </button>
                 </form>
                 <button class="btn btn-xs btn-outline-info" style="font-size:.72rem;padding:1px 6px" title="編輯"
-                        onclick="openEditCheck({{ c.pk }}, '{{ c.check_type }}', {{ c.port|default:'null' }}, '{{ c.ssh_username }}', '{{ c.url }}', {{ c.expected_status_code }}, '{{ c.snmp_community }}', {{ c.snmp_version }}, {{ c.snmp_port }}, {{ c.interval }}, '{{ c.snmp_label|escapejs }}', '{{ c.snmp_oid|escapejs }}')">
+                        onclick="openEditCheck({{ c.pk }}, '{{ c.check_type }}', {{ c.port|default:'null' }}, '{{ c.ssh_username }}', '{{ c.url }}', {{ c.expected_status_code }}, '{{ c.snmp_community }}', {{ c.snmp_version }}, {{ c.snmp_port }}, {{ c.interval|default_if_none:'null' }}, '{{ c.snmp_label|escapejs }}', '{{ c.snmp_oid|escapejs }}')">
                   <i class="bi bi-pencil"></i>
                 </button>
                 <form method="post" action="/checks/{{ c.pk }}/delete/" class="d-inline"
@@ -371,7 +372,8 @@
             </div>
             <div class="col-6">
               <label class="form-label form-label-sm">間隔（秒）</label>
-              <input type="number" id="edit-interval" class="form-control form-control-sm" min="1">
+              <input type="number" id="edit-interval" class="form-control form-control-sm" min="1"
+                     placeholder="跟隨持續監控" title="留空 = 跟隨持續監控的全域間隔；填數字 = 自訂秒數">
             </div>
           </div>
         </div>
@@ -545,7 +547,7 @@ function openEditCheck(pk, type, port, sshUser, url, httpCode, snmpCommunity, sn
   document.getElementById("edit-http-code").value    = httpCode || 200;
   document.getElementById("edit-snmp-community").value = snmpCommunity || "public";
   document.getElementById("edit-snmp-port").value    = snmpPort || 161;
-  document.getElementById("edit-interval").value     = interval || 60;
+  document.getElementById("edit-interval").value     = interval ?? "";   /* 空 = 跟隨持續監控 */
   document.getElementById("edit-snmp-label").value   = snmpLabel || "";
   document.getElementById("edit-snmp-oid").value     = snmpOid || "";
 
@@ -574,7 +576,7 @@ function saveEditCheck() {
       expected_status_code: document.getElementById("edit-http-code").value,
       snmp_community:      document.getElementById("edit-snmp-community").value,
       snmp_port:           document.getElementById("edit-snmp-port").value,
-      interval:            document.getElementById("edit-interval").value,
+      interval:            document.getElementById("edit-interval").value || null,
       snmp_label:          document.getElementById("edit-snmp-label").value,
       snmp_oid:            document.getElementById("edit-snmp-oid").value,
     })
@@ -660,7 +662,7 @@ function addSelectedInterfaces() {
   fetch("/api/device/{{ device.id }}/snmp-add-checks/", {
     method: "POST",
     headers: {"X-CSRFToken": getCookie("csrftoken"), "Content-Type": "application/json"},
-    body: JSON.stringify({community, port, version: 2, interval: 60, interfaces})
+    body: JSON.stringify({community, port, version: 2, interval: null, interfaces})  /* 跟隨持續監控 */
   })
   .then(r => r.json())
   .then(data => {
