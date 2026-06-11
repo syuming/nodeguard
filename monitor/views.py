@@ -1012,6 +1012,9 @@ def api_check_ip(request):
     exclude_id = request.GET.get("exclude_id", "").strip()
     if not ip or not company_id:
         return JsonResponse({"exists": False})
+    profile = get_profile(request.user)
+    if not profile.is_admin and str(profile.company_id) != company_id:
+        return JsonResponse({"exists": False})
     qs = Device.objects.filter(ip_address=ip, company_id=company_id)
     if exclude_id:
         qs = qs.exclude(pk=exclude_id)
