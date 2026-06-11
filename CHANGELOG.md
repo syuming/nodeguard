@@ -1,5 +1,10 @@
 # Changelog
 
+## v1.7.5 — 2026-06-11
+- 新增 logrotate 設定：access.log / nodeguard.log / duplicate_ip.log 超過 10MB 自動輪轉，保留 5 份壓縮備份
+- 重構：批量建立設備邏輯抽出為共用模組，`device_bulk_add` 與公司頁面共用同一實作
+- 測試：新增 6 個批量建立測試，總計 27 個自動化測試
+
 ## v1.7.4 — 2026-06-11
 - 安全修補：`api_check_ip` 加入公司範圍檢查，防止跨公司枚舉設備 IP 與名稱
 - 安全強化：Email 密碼、SSH 密碼、SNMP Community 改以 Fernet 加密落盤，升級時自動加密既有資料
