@@ -75,6 +75,9 @@ curl -fsSL https://raw.githubusercontent.com/syuming/nodeguard/main/install.sh |
 
 支援設備：`Cisco IOS`、`Cisco NX-OS`、`Juniper JunOS`、`Linux`、`Generic`
 
+**監控間隔**：持續監控的全域間隔可於首頁設定（1–3600 秒，預設 3 秒，admin 限定）。
+各監控項目的間隔留空即跟隨全域間隔，填寫數字則以自訂秒數獨立排程。
+
 ---
 
 ## 狀態說明
