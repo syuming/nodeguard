@@ -1,0 +1,45 @@
+name: CI
+
+# 輕量 CI（Django 專案）：push(main/tag v*)/PR 觸發。
+# 檢查 ① 全專案語法 ② Django 系統檢查 ③ 是否漏建 migration。
+# 皆不需真實機密或外部服務——SECRET_KEY 用下方一次性假值即可（settings.py
+# 以 os.environ["SECRET_KEY"] 硬性讀取，不給會 KeyError）；DB 為 SQLite，check /
+# makemigrations --check 不連線資料庫。
+on:
+  push:
+    branches: [main]
+    tags: ['v*']
+  pull_request:
+    branches: [main]
+
+env:
+  # 一次性、僅供 CI import settings 用；非真實金鑰、無任何權限。
+  SECRET_KEY: ci-placeholder-not-a-real-secret
+  DEBUG: "False"
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: pip
+
+      # py_compile 只驗語法、不 import，即使相依未裝也先擋掉語法錯。
+      - name: Compile all Python (syntax check)
+        run: |
+          git ls-files '*.py' | xargs python -m py_compile
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Django system check
+        run: python manage.py check
+
+      # 模型改了卻忘了 makemigrations 會被擋下（--check 有漂移即 exit 1）。
+      - name: Detect missing migrations
+        run: python manage.py makemigrations --check --dry-run
