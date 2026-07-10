@@ -1,5 +1,7 @@
 # NodeGuard - 網路設備監控系統
 
+[![CI](https://github.com/syuming/nodeguard/actions/workflows/ci.yml/badge.svg)](https://github.com/syuming/nodeguard/actions/workflows/ci.yml)
+
 基於 Django 開發的網路設備監控平台，支援 Cisco、Juniper、Linux 設備的 Ping / TCP / SSH / HTTP 狀態監控，並提供多公司權限管理。
 
 ---
