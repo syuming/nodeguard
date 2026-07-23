@@ -21,10 +21,14 @@ jobs:
   check:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      # action 版本一律跟主版本浮動標籤（自動收 patch）。checkout v5+／
+      # setup-python v6+ 起改跑 Node 24——舊的 v4/v5 被 runner 強制升 Node 24
+      # 並每次 build 噴 deprecation annotation，故 2026-07 一次升到當時最新主版本。
+      # 註：setup-python v7 只移除 pip-install 輸入，cache: pip 不受影響。
+      - uses: actions/checkout@v7
 
       - name: Setup Python 3.12
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v7
         with:
           python-version: '3.12'
           cache: pip
